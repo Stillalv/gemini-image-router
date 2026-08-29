@@ -1,0 +1,35 @@
+{
+  "name": "gemini-web-image-router",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun vite dev --port 8787 --host",
+    "build": "bun --bun vite build",
+    "preview": "bun --bun vite preview --port 8787",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "login": "bun run src/lib/server/browser/login.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "zod": "^3.23.8",
+    "clsx": "^2.1.1",
+    "lucide-svelte": "^0.475.0"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "^5.2.11",
+    "@sveltejs/kit": "^2.16.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/bun": "^1.4.0",
+    "@types/node": "^22.10.1",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "svelte": "^5.0.0",
+    "svelte-adapter-bun": "^1.0.1",
+    "svelte-check": "^4.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
