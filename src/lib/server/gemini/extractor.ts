@@ -160,14 +160,14 @@ export async function extractGeneratedImages(
           text = responseContainers[responseContainers.length - 1].textContent?.trim() || '';
         }
 
-        const isRefusal = /tidak dapat membuat gambar|can't generate images|tidak dapat mengedit|cannot edit|rate limit|coba lagi beberapa saat|policy violation|maaf, saya tidak bisa/i.test(text);
+        const isRefusal = /tidak dapat membuat gambar|can't generate images|tidak dapat mengedit|cannot edit|cannot create a new image|since i cannot|cannot create|i am unable to create|rate limit|coba lagi beberapa saat|policy violation|maaf, saya tidak bisa/i.test(text);
 
         return { isGenerating, isPlaceholderActive, isRefusal, text };
       }).catch(() => ({ isGenerating: false, isPlaceholderActive: false, isRefusal: false, text: '' }));
 
       if (status.isRefusal) {
         console.warn(`[EXTRACTOR] Gemini returned refusal/error text: "${status.text.slice(0, 100)}..."`);
-        throw new Error(`Gemini gagal membuat gambar: ${status.text.slice(0, 140)}`);
+        throw new Error(`Gemini merespons teks tanpa gambar: ${status.text.slice(0, 120)}`);
       }
 
       // If network intercepted buffers are available and stop button disappeared

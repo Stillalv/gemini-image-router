@@ -43,12 +43,12 @@ async function resolveAttachment(imageInput: string): Promise<string> {
 
 export function formatEditPrompt(rawPrompt: string, aspectRatio?: string, isMultiAttachment = false): string {
   const p = rawPrompt.trim();
-  const ratioSpec = aspectRatio && aspectRatio !== 'Auto' ? ` dalam rasio aspek ${aspectRatio} (${aspectRatio} aspect ratio)` : '';
+  const ratioSpec = aspectRatio && aspectRatio !== 'Auto' ? ` in ${aspectRatio} aspect ratio` : '';
   const refText = isMultiAttachment
-    ? 'gambar-gambar yang saya lampirkan ini sebagai referensi visual'
-    : 'gambar yang saya lampirkan ini secara visual';
+    ? 'the attached images as visual references'
+    : 'the attached image';
 
-  return `Edit dan modifikasi ${refText}: "${p}"${ratioSpec}. Buatkan gambar visual baru hasil modifikasinya sekarang juga (generate edited image).`;
+  return `Generate an edited visual image based on ${refText}. Apply these visual edits and output the new generated image: "${p}"${ratioSpec}. Generate image now (create image output).`;
 }
 
 export async function runEditTask(
