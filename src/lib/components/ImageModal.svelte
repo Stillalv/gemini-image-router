@@ -104,9 +104,9 @@
 
     let areaDescription = '';
     if (pinPoint) {
-      const vLoc = pinPoint.yPercent < 35 ? 'atas' : pinPoint.yPercent > 65 ? 'bawah' : 'tengah';
-      const hLoc = pinPoint.xPercent < 35 ? 'kiri' : pinPoint.xPercent > 65 ? 'kanan' : 'tengah';
-      areaDescription = `[Fokus edit area ${vLoc}-${hLoc} (${pinPoint.xPercent}%, ${pinPoint.yPercent}%)]: `;
+      const vLoc = pinPoint.yPercent < 35 ? $t('modal.top') : pinPoint.yPercent > 65 ? $t('modal.bottom') : $t('modal.center');
+      const hLoc = pinPoint.xPercent < 35 ? $t('modal.left') : pinPoint.xPercent > 65 ? $t('modal.right') : $t('modal.center');
+      areaDescription = `[${$t('modal.focusArea')} ${vLoc}-${hLoc} (${pinPoint.xPercent}%, ${pinPoint.yPercent}%)]: `;
     }
 
     const fullEditPrompt = `${areaDescription}${text}`;
@@ -271,46 +271,51 @@
         </div>
       {:else}
         <!-- 2. SINGLE IMAGE VIEW: Smooth Zoom Entrance & Exit Scale -->
-        <button
-          type="button"
-          onclick={handleImageClick}
+        <div
           in:scale={{ start: 0.92, duration: 250, easing: cubicOut }}
           out:scale={{ start: 0.96, duration: 180, easing: cubicIn }}
-          class="relative p-0 border-0 bg-transparent outline-none flex items-center justify-center max-h-[78vh] max-w-[90vw] {isEditMode ? 'cursor-crosshair' : 'cursor-default'}"
+          class="relative inline-flex items-center justify-center max-h-[78vh] max-w-[90vw]"
         >
-          <img
-            bind:this={imageElement}
-            src={imageUrl}
-            alt={prompt || 'Gemini output'}
-            class="max-h-[78vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-all duration-200 {isEditMode ? 'ring-2 ring-white/90 shadow-white/10' : ''}"
-          />
-        </button>
-
-        <!-- 4. PIN AREA MARKER: Spring entrance + Multi-tier Sonar Radar Waves -->
-        {#if isEditMode && pinPoint}
-          <div
-            style="left: {pinPoint.x}px; top: {pinPoint.y}px;"
-            class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30 flex items-center justify-center"
+          <!-- Image Element -->
+          <button
+            type="button"
+            onclick={handleImageClick}
+            class="relative p-0 border-0 bg-transparent outline-none flex items-center justify-center {isEditMode ? 'cursor-crosshair' : 'cursor-default'}"
           >
-            <!-- Outer Sonar Radar Ring -->
-            <div class="pin-sonar-outer"></div>
-            <!-- Inner Glowing Pulse Ring -->
-            <div class="pin-sonar-inner"></div>
+            <img
+              bind:this={imageElement}
+              src={imageUrl}
+              alt={prompt || 'Gemini output'}
+              class="max-h-[78vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-all duration-200 {isEditMode ? 'ring-2 ring-white/90 shadow-white/10' : ''}"
+            />
+          </button>
 
-            <!-- Core Pin Icon with Spring Entrance -->
-            <div class="pin-marker-core">
-              ✦
-            </div>
-
-            <!-- Floating Coordinates Tag -->
+          <!-- 4. PIN AREA MARKER: Spring entrance + Multi-tier Sonar Radar Waves -->
+          {#if isEditMode && pinPoint}
             <div
-              in:fly={{ y: 6, duration: 200, easing: backOut }}
-              class="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/90 text-white text-[10px] font-semibold rounded-md border border-neutral-700 shadow-xl whitespace-nowrap"
+              style="left: {pinPoint.xPercent}%; top: {pinPoint.yPercent}%;"
+              class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30 flex items-center justify-center"
             >
-              {pinPoint.xPercent}%, {pinPoint.yPercent}%
+              <!-- Outer Sonar Radar Ring -->
+              <div class="pin-sonar-outer"></div>
+              <!-- Inner Glowing Pulse Ring -->
+              <div class="pin-sonar-inner"></div>
+
+              <!-- Core Pin Icon with Spring Entrance -->
+              <div class="pin-marker-core">
+                ✦
+              </div>
+
+              <!-- Floating Coordinates Tag -->
+              <div
+                in:fly={{ y: 6, duration: 200, easing: backOut }}
+                class="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/90 text-white text-[10px] font-semibold rounded-md border border-neutral-700 shadow-xl whitespace-nowrap"
+              >
+                {pinPoint.xPercent}%, {pinPoint.yPercent}%
+              </div>
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
       {/if}
     </main>
 
@@ -324,13 +329,13 @@
         >
           <div class="flex items-center gap-1.5 pl-2 text-neutral-300 flex-shrink-0 text-xs font-semibold">
             <Sparkles class="w-4 h-4 text-neutral-400" />
-            <span>{pinPoint ? `Area (${pinPoint.xPercent}%, ${pinPoint.yPercent}%)` : $t('modal.clickAreaFirst')}:</span>
+            <span>{pinPoint ? `Area (${pinPoint.xPercent}%, ${pinPoint.yPercent}%)` : $t('modal.wholeImage')}:</span>
           </div>
 
           <input
             type="text"
             bind:value={editComment}
-            placeholder={pinPoint ? $t('modal.editPromptPlaceholder') : $t('modal.clickAreaFirst')}
+            placeholder={pinPoint ? $t('modal.editPromptPlaceholder') : $t('modal.editPromptGeneralPlaceholder')}
             onkeydown={(e) => e.key === 'Enter' && submitAreaEdit()}
             class="flex-1 bg-transparent border-0 outline-none text-white text-xs placeholder-neutral-500 px-2 py-1"
           />
@@ -347,7 +352,7 @@
         </div>
       {:else if isCompareMode}
         <div in:fade={{ duration: 180 }} class="text-xs text-neutral-400 text-center">
-          Tampilan komparasi perbandingan gambar asli vs hasil edit Gemini.
+          {$t('modal.compareDescription')}
         </div>
       {:else}
         <div in:fade={{ duration: 180 }} class="text-xs text-neutral-500 text-center">

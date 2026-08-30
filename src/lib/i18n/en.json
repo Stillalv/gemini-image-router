@@ -11,7 +11,8 @@
     "deleteSession": "Delete session",
     "tabPool": "Tab Pool",
     "active": "active",
-    "queued": "Queued"
+    "queued": "queued",
+    "poolLabel": "Pool"
   },
   "chat": {
     "generateMode": "Mode: Text-to-Image",
@@ -28,23 +29,30 @@
     "pressEnter": "Press Enter to send. You can drag & drop images directly onto the text input.",
     "attachImage": "Attach Image (+)",
     "attachedImage": "Attached Image",
+    "readyToEdit": "Image ready to edit",
     "removeAttachment": "Remove attachment",
     "revertEdit": "Revert / Edit",
     "revertTooltip": "Copy and restore prompt & attachment back to input",
     "copyText": "Copy Text",
     "copied": "Copied",
+    "copy": "Copy",
     "you": "You",
     "assistant": "Gemini",
     "fullSizeEdit": "Open Full Size / Edit",
     "download": "Download",
     "downloading": "Downloading...",
     "copyLink": "Copy Original URL",
-    "openNewTab": "Open full size in new tab"
+    "openNewTab": "Open full size in new tab",
+    "send": "Send",
+    "selectRatioTitle": "Select Image Ratio",
+    "selectModelTitle": "Select Gemini AI Model & Quota Multiplier",
+    "attachImagePrompt": "Attach an image to edit (PNG, JPG, WEBP)"
   },
   "modal": {
     "pointEditArea": "Point & Edit Area",
     "clickingArea": "Click on Image Area...",
     "editPromptPlaceholder": "Type edit instructions for this area (e.g. translate speech bubble / change color)...",
+    "editPromptGeneralPlaceholder": "Type image edit instructions (e.g. change 1:1 aspect ratio, change pose, change background)...",
     "clickAreaFirst": "Click an area on the image above first...",
     "sendEdit": "Send Edit",
     "pointEditTip": "Click \"Point & Edit Area\" on the top right to mark the specific region you want to edit.",
@@ -57,7 +65,122 @@
     "textToImage": "Text-to-Image (Create New)",
     "textToImageDesc": "Generate high quality imagery from textual descriptions.",
     "imageToImage": "Image-to-Image (Edit Image)",
-    "imageToImageDesc": "Attach an image and modify specific parts using AI directives."
+    "imageToImageDesc": "Attach an image and modify specific parts using AI directives.",
+    "wholeImage": "Whole Image",
+    "focusArea": "Focus edit area",
+    "compareDescription": "Side-by-side comparison between original and Gemini edited result.",
+    "top": "top",
+    "bottom": "bottom",
+    "center": "center",
+    "left": "left",
+    "right": "right"
+  },
+  "alerts": {
+    "confirmDeleteSession": "Delete this session and its history?",
+    "requestFailed": "Failed",
+    "systemError": "System error occurred",
+    "networkError": "Error",
+    "invalidImageMime": "Only image files (PNG, JPG, WEBP) are allowed",
+    "urlCopied": "Link URL copied successfully",
+    "needLoginPlan": "Please sign up or log in first to activate this plan.",
+    "loginRequired": "Authentication Required",
+    "signupUltraSuccess": "Your Ultra Account was created and activated successfully!",
+    "loginSuccess": "Logged in successfully!",
+    "logoutSuccess": "You have been logged out.",
+    "regFailed": "Registration failed.",
+    "loginFailed": "Invalid email or password."
+  },
+  "models": {
+    "title": "MODEL & USAGE",
+    "costPerReq": "COST / REQ",
+    "aspectTitle": "ASPECT",
+    "auto": "auto",
+    "3.7-flash": {
+      "name": "3.7 Flash",
+      "badge": "2x",
+      "tag": "Balanced",
+      "description": "Standard Versatile & Balanced Quality (Default)"
+    },
+    "3.5-flash-lite": {
+      "name": "3.5 Flash-Lite",
+      "badge": "1x",
+      "tag": "Fast",
+      "description": "Fast Generation & Lowest Quota Cost"
+    },
+    "3.1-pro": {
+      "name": "3.1 Pro",
+      "badge": "3x",
+      "tag": "Advanced",
+      "description": "Deep Reasoning for Complex Prompts"
+    },
+    "extended-thinking": {
+      "name": "Extended Thinking",
+      "badge": "4x",
+      "tag": "Deep Thinking",
+      "description": "Deep Chain-of-Thought & Multi-tier Composition"
+    }
+  },
+  "docs": {
+    "title": "API Documentation",
+    "subtitle": "Text-to-Image, Image-to-Image & Session Management Endpoint Specifications",
+    "requestBody": "Request Body (JSON)",
+    "copy": "Copy",
+    "copied": "Copied",
+    "curlSnippet": "cURL Example",
+    "pythonSnippet": "Python Example (requests)",
+    "nodeSnippet": "JavaScript / Node.js Example (fetch)",
+    "tabs": {
+      "generate": "POST /api/generate",
+      "edit": "POST /api/edit",
+      "sessions": "CRUD /api/sessions",
+      "auth": "API Authentication",
+      "curl": "cURL",
+      "python": "Python",
+      "javascript": "JavaScript / Node.js"
+    },
+    "generate": {
+      "title": "Text-to-Image Generation",
+      "desc": "Generate brand new high quality images from textual prompt descriptions using Google Gemini Imagen 3.",
+      "promptParam": "prompt (string, required) : Detailed description of the image to generate (max 2,000 chars)",
+      "sessionParam": "session_id (string, optional) : Session ID to group conversation history",
+      "aspectRatioParam": "aspect_ratio (string, optional) : Target aspect ratio (Auto, 1:1, 16:9, 9:16, 4:3, 3:4, 2:1, 1:2)",
+      "modelParam": "model (string, optional) : Gemini AI model selection (3.7-flash, 3.5-flash-lite, 3.1-pro, extended-thinking)"
+    },
+    "edit": {
+      "title": "Image-to-Image Editing",
+      "desc": "Edit or modify specific parts of existing images based on natural language instructions.",
+      "promptParam": "prompt (string, required) : Modification directives or regional editing instructions",
+      "imageParam": "image (string, required) : Input image in Base64 Data URL or public image URL",
+      "sessionParam": "session_id (string, optional) : Related session ID",
+      "aspectRatioParam": "aspect_ratio (string, optional) : Target aspect ratio for the edited output",
+      "modelParam": "model (string, optional) : Gemini AI model selection"
+    },
+    "sessions": {
+      "title": "Sessions CRUD & Message History",
+      "desc": "All conversation sessions and message streams are stored locally in the SQLite database.",
+      "listTitle": "List Sessions",
+      "listDesc": "GET /api/sessions : Retrieve list of all user conversation sessions.",
+      "createTitle": "Create New Session",
+      "createDesc": "POST /api/sessions : Create a new session with type 'generate' or 'edit'.",
+      "detailTitle": "Session Details & Messages",
+      "detailDesc": "GET /api/sessions/:id : Retrieve full session details and all messages.",
+      "deleteTitle": "Delete Session",
+      "deleteDesc": "DELETE /api/sessions/:id : Permanently delete a session and all its messages."
+    },
+    "auth": {
+      "title": "API Key Authentication & Integrations",
+      "desc": "Provide Authorization: Bearer <API_KEY> header to authenticate integration requests from n8n, Antigravity, OpenCode, or curl.",
+      "headerLabel": "Authentication Header:",
+      "headerValue": "Authorization: Bearer gem_sec_your_key_here"
+    },
+    "responses": {
+      "title": "Response Format & Error Codes",
+      "successDesc": "200 OK: Returns { ok: true, images: [{ file, url, width, height }] }",
+      "error400": "400 Bad Request: Invalid or missing prompt/image parameters or payload exceeded limits",
+      "error401": "401 Unauthorized: Missing or revoked API Key",
+      "error403": "403 Quota Exceeded: Daily request quota limit reached for your account",
+      "error500": "500 Internal Error: Server or browser automation failure"
+    }
   },
   "account": {
     "title": "Account & Subscription Plan",
@@ -68,9 +191,58 @@
     "remaining": "remaining",
     "availablePlans": "Available Subscription Plans",
     "activePlan": "Active Plan",
+    "switchAnytime": "Switch plans anytime",
+    "alreadyLoggedIn": "You are logged in",
+    "switchAccountPrompt": "Want to switch accounts?",
+    "signupUltraBtn": "Sign Up & Activate Ultra Plan (1,000 req/day)",
     "freePlan": "Free Plan (20 req/day)",
     "proPlan": "Pro Plan (100 req/day)",
-    "ultraPlan": "Ultra Plan (1,000 req/day)"
+    "ultraPlan": "Ultra Plan (1,000 req/day)",
+    "apiKeysTitle": "API Keys & Integrations",
+    "apiKeysDesc": "Use API keys to access endpoints from n8n, Antigravity, OpenCode, or curl.",
+    "createKey": "Create New API Key",
+    "keyNamePlaceholder": "API Key Name (e.g. n8n Production)",
+    "generateKeyBtn": "Generate Key",
+    "copyRawKeyTip": "Copy your API key now. This key will only be shown once!",
+    "revokeKey": "Revoke",
+    "keyCreated": "API Key created successfully",
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "authTab": "Log In / Sign Up",
+    "name": "Full Name",
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Log In to Your Account",
+    "signupTitle": "Create New Account (Default Ultra)",
+    "loginBtn": "Log In Now",
+    "signupBtn": "Sign Up & Activate",
+    "dontHaveAccount": "Don't have an account? Sign Up",
+    "alreadyHaveAccount": "Already have an account? Log In",
+    "logoutSuccess": "Successfully logged out",
+    "authSuccess": "Authentication successful!",
+    "noKeys": "No API keys created yet.",
+    "authHeaderTitle": "API Authentication Header:",
+    "guestBannerTitle": "Unlock Ultra Plan VIP Access (1,000 Requests/Day)",
+    "guestBannerDesc": "You are currently in Guest mode (Free - 20 req/day). Sign up for a free account now to automatically receive the Ultra VIP plan & API keys!",
+    "guestBannerBtn": "Sign Up for Ultra Account Now",
+    "guestAuthRequired": "Authentication Required",
+    "guestAuthRequiredDesc": "Please Log In or Sign Up to create and manage your integration API keys.",
+    "openAuthFormBtn": "Open Log In / Sign Up Form"
+  },
+  "plans": {
+    "free": {
+      "name": "Free Plan",
+      "description": "20 image requests per day"
+    },
+    "pro": {
+      "name": "Pro Plan",
+      "description": "100 image requests per day (Fast Priority)"
+    },
+    "ultra": {
+      "name": "Ultra Plan",
+      "description": "1,000 requests per day (Highest VIP Priority)"
+    }
   },
   "settings": {
     "title": "Settings",

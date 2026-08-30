@@ -19,6 +19,7 @@
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
   --accent-primary: #18181b;
+  --accent-gold: #f59e0b;
   --accent-text: #ffffff;
 
   /* Sidebar Tokens */
@@ -39,7 +40,8 @@ html.dark {
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  --accent-primary: #f4f4f5;
+  --accent-primary: #ffffff;
+  --accent-gold: #fbbf24;
   --accent-text: #09090b;
 }
 
@@ -69,6 +71,19 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
 }
+
+/* Semantic Theme Utility Classes */
+.bg-app { background-color: var(--bg-app); }
+.bg-sidebar { background-color: var(--bg-sidebar); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-card { background-color: var(--bg-card); }
+.bg-input { background-color: var(--bg-input); }
+.border-subtle { border-color: var(--border-subtle); }
+.border-strong { border-color: var(--border-strong); }
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+.text-accent-gold { color: var(--accent-gold); }
 
 /* ==========================================================================
    Pure 60/120fps Hardware-Accelerated Sidebar Drawer System
@@ -230,3 +245,76 @@ html.dark ::-webkit-scrollbar-thumb {
 html.dark ::-webkit-scrollbar-thumb:hover {
   background-color: #52525b;
 }
+
+/* ==========================================================================
+   Liquid Molten Gold & Orange Wave Theme (Ultra VIP) - 60fps Flowing Water
+   ========================================================================== */
+@keyframes liquidWaterFlow {
+  0% {
+    background-position: 0% 40%;
+  }
+  35% {
+    background-position: 80% 85%;
+  }
+  65% {
+    background-position: 100% 20%;
+  }
+  100% {
+    background-position: 0% 40%;
+  }
+}
+
+.liquid-gold-badge {
+  background: linear-gradient(
+    115deg,
+    #ea580c 0%,
+    #f59e0b 18%,
+    #fef08a 35%,
+    #d97706 52%,
+    #ea580c 68%,
+    #fef08a 84%,
+    #ea580c 100%
+  );
+  background-size: 280% 280%;
+  animation: liquidWaterFlow 6s ease-in-out infinite;
+  color: #1c1917 !important;
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(194, 65, 12, 0.5);
+  border: 1px solid rgba(251, 191, 36, 0.65);
+  position: relative;
+  will-change: background-position;
+}
+
+.liquid-gold-surface {
+  background: linear-gradient(
+    125deg,
+    #9a3412 0%,
+    #ea580c 16%,
+    #f59e0b 32%,
+    #fde047 48%,
+    #ea580c 64%,
+    #f59e0b 80%,
+    #fde047 100%
+  );
+  background-size: 300% 300%;
+  animation: liquidWaterFlow 7s ease-in-out infinite;
+  color: #1c1917 !important;
+  box-shadow: 
+    0 2px 5px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1.5px rgba(154, 52, 18, 0.6);
+  border: 1px solid rgba(251, 191, 36, 0.7);
+  position: relative;
+  will-change: background-position;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-gold-badge,
+  .liquid-gold-surface {
+    animation: none !important;
+  }
+}
+
+

@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { Page, Response } from 'playwright';
 import path from 'node:path';
 import fs from 'node:fs';
 import { OUTPUT_DIR } from '../security/path-guard';
@@ -10,147 +10,239 @@ export async function extractGeneratedImages(
   page: Page,
   existingImages: string[],
   prefix: 'gen' | 'edit' = 'gen',
-  timeoutMs: number = 85000
+  timeoutMs: number = 130000
 ): Promise<GeneratedImage[]> {
   const start = Date.now();
   let extracted: Array<{ publicUrl?: string; dataUrl?: string; src: string; width: number; height: number; alt: string }> = [];
 
-  // Listen to network responses to capture the exact public Google CDN URL
+  // 1. Dual-Layer Capture: Network stream interception
   const capturedCdnUrls: string[] = [];
-  const onResponse = (res: any) => {
+  const interceptedBuffers: Array<{ buffer: Buffer; url: string }> = [];
+
+  const onResponse = async (res: Response) => {
     try {
       const url = res.url();
+      const contentType = res.headers()['content-type'] || '';
+
       if (
         (url.includes('googleusercontent.com') || url.includes('generativeai.google.com')) &&
+        !url.includes('/a/') &&
+        !url.includes('/ogw/') &&
+        !url.includes('/p/') &&
         !url.includes('avatar') &&
         !url.includes('profile') &&
         !url.includes('sparkle') &&
-        !url.includes('gstatic')
+        !url.includes('gstatic') &&
+        !existingImages.includes(url)
       ) {
-        console.log('[NETWORK] Intercepted Google CDN Image URL:', url.slice(0, 100));
-        capturedCdnUrls.push(url);
+        if (!capturedCdnUrls.includes(url)) {
+          console.log('[NETWORK] Intercepted Google CDN Image Stream:', url.slice(0, 95));
+          capturedCdnUrls.push(url);
+        }
+
+        if (contentType.startsWith('image/') || url.includes('=s') || url.includes('=w')) {
+          const buf = await res.body().catch(() => null);
+          if (buf && buf.length > 4000) {
+            interceptedBuffers.push({ buffer: buf, url });
+          }
+        }
       }
     } catch {}
   };
   page.on('response', onResponse);
 
   try {
+    let lastLog = 0;
     while (Date.now() - start < timeoutMs) {
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(1000);
       const elapsed = Math.round((Date.now() - start) / 1000);
 
-    const candidates = await page.evaluate((existing) => {
-      // 1. Locate model response containers in the DOM hierarchy
-      const responseContainers = [
-        ...document.querySelectorAll('model-response, [data-message-author-role="model"], .model-response-text, .response-container, message-content')
-      ];
+      // Periodically log generation status
+      if (elapsed - lastLog >= 5) {
+        lastLog = elapsed;
+        console.log(`[EXTRACTOR] Waiting for Gemini output... (${elapsed}s elapsed)`);
+      }
 
-      if (!responseContainers.length) return [];
+      // Check DOM candidate images with in-memory Canvas rendering
+      const candidates = await page.evaluate((existing) => {
+        // 1. Locate latest model response container ONLY
+        const responseContainers = [
+          ...document.querySelectorAll('model-response, [data-message-author-role="model"], .model-response-text, .response-container, message-content, assistant-messages-primary')
+        ];
 
-      // Focus on the latest model response
-      const latestResponse = responseContainers[responseContainers.length - 1];
+        if (responseContainers.length === 0) return [];
+        const latestTurn = responseContainers[responseContainers.length - 1];
 
-      // 2. Select the specific generated image element inside the model response
-      const modelImgs = [
-        ...latestResponse.querySelectorAll('button.image-button img, .overlay-container img, image-viewer img, img.image, img.animate.loaded')
-      ];
+        // 2. Query image elements STRICTLY inside the latest model response turn
+        const turnImgs = Array.from(latestTurn.querySelectorAll('img'));
+        const valid: Array<{ publicUrl?: string; dataUrl?: string; src: string; width: number; height: number; alt: string }> = [];
 
-      const valid: Array<{ publicUrl?: string; dataUrl?: string; src: string; width: number; height: number; alt: string }> = [];
+        for (const img of turnImgs) {
+          const el = img as HTMLImageElement;
+          const src = el.getAttribute('src') || el.src || '';
+          const alt = el.alt || '';
 
-      for (const img of modelImgs) {
-        const el = img as HTMLImageElement;
-        const w = el.naturalWidth || el.clientWidth || 0;
-        const h = el.naturalHeight || el.clientHeight || 0;
-        const src = el.src || '';
+          // Exclude Google account avatars, profile photos, icons, and upload thumbnails
+          if (
+            !src ||
+            src.includes('gstatic.com') ||
+            src.includes('/a/') ||
+            src.includes('/ogw/') ||
+            src.includes('/p/') ||
+            src.includes('profile') ||
+            src.includes('avatar') ||
+            src.includes('sparkle') ||
+            src.includes('gb_') ||
+            alt.toLowerCase().includes('uploaded image preview') ||
+            alt.toLowerCase().includes('pratinjau') ||
+            alt.toLowerCase().includes('preview') ||
+            alt.toLowerCase().includes('profile') ||
+            alt.toLowerCase().includes('avatar') ||
+            el.closest('header, nav, aside, .input-area, rich-textarea, .thumbnail-container, user-query-container, user-message, .user-query, .user-bubble')
+          ) {
+            continue;
+          }
 
-        // Check if there is an explicit Google CDN public URL on the element or parent
-        const parentBtn = el.closest('button, a');
-        const candidateUrl = el.getAttribute('src') || el.src || '';
-        const isGoogleCdn = candidateUrl.startsWith('https://lh3.googleusercontent.com') || candidateUrl.startsWith('https://generativeai.google.com');
+          // If it is already in existing images captured before sending prompt, skip
+          if (existing.includes(src)) {
+            continue;
+          }
 
-        // Must have loaded source and not be a previously seen image
-        if (src && !existing.includes(src) && w > 0 && h > 0) {
-          if (isGoogleCdn) {
-            valid.push({ publicUrl: candidateUrl, src, width: w, height: h, alt: el.alt || '' });
-          } else {
-            try {
-              const canvas = document.createElement('canvas');
-              canvas.width = w;
-              canvas.height = h;
-              const ctx = canvas.getContext('2d')!;
+          const w = el.naturalWidth || el.clientWidth || 0;
+          const h = el.naturalHeight || el.clientHeight || 0;
+          const isGoogleCdn = src.startsWith('https://lh3.googleusercontent.com') || src.startsWith('https://generativeai.google.com');
+
+          // Attempt in-memory canvas render
+          let dataUrl: string | undefined = undefined;
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = w || 1024;
+            canvas.height = h || 1024;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
               ctx.drawImage(el, 0, 0);
-              const dataUrl = canvas.toDataURL('image/png');
-              valid.push({ dataUrl, src: src.slice(0, 120), width: w, height: h, alt: el.alt || '' });
-            } catch {
-              valid.push({ src, width: w, height: h, alt: el.alt || '' });
+              dataUrl = canvas.toDataURL('image/png');
             }
+          } catch {}
+
+          valid.push({
+            dataUrl,
+            publicUrl: isGoogleCdn ? src : undefined,
+            src,
+            width: w || 1024,
+            height: h || 1024,
+            alt: alt || 'Gemini generated image'
+          });
+        }
+        return valid;
+      }, existingImages).catch(() => []);
+
+      if (candidates.length > 0) {
+        console.log(`[EXTRACTOR] Found ${candidates.length} Imagen image element(s) (${candidates[0].width}x${candidates[0].height}) in ${elapsed}s`);
+        extracted = candidates;
+        break;
+      }
+
+      // Check if generation finished and check for error/refusal text
+      const status = await page.evaluate(() => {
+        // Is stop button active?
+        const stopBtn = document.querySelector('button[aria-label*="Stop" i], button[aria-label*="Hentikan" i], [data-test-id="stop-button"], .stop-button');
+        const isGenerating = stopBtn !== null;
+
+        // Is placeholder active?
+        const placeholder = document.querySelector('.image-placeholder, [aria-label*="Membuat" i], [aria-label*="Generating" i], .generating-image');
+        const isPlaceholderActive = placeholder !== null;
+
+        // Check response text
+        const responseContainers = document.querySelectorAll('model-response, [data-message-author-role="model"], message-content');
+        let text = '';
+        if (responseContainers.length > 0) {
+          text = responseContainers[responseContainers.length - 1].textContent?.trim() || '';
+        }
+
+        const isRefusal = /tidak dapat membuat gambar|can't generate images|tidak dapat mengedit|cannot edit|rate limit|coba lagi beberapa saat|policy violation|maaf, saya tidak bisa/i.test(text);
+
+        return { isGenerating, isPlaceholderActive, isRefusal, text };
+      }).catch(() => ({ isGenerating: false, isPlaceholderActive: false, isRefusal: false, text: '' }));
+
+      if (status.isRefusal) {
+        console.warn(`[EXTRACTOR] Gemini returned refusal/error text: "${status.text.slice(0, 100)}..."`);
+        throw new Error(`Gemini gagal membuat gambar: ${status.text.slice(0, 140)}`);
+      }
+
+      // If network intercepted buffers are available and stop button disappeared
+      if (interceptedBuffers.length > 0 && !status.isGenerating && !status.isPlaceholderActive && elapsed > 10) {
+        console.log(`[EXTRACTOR] Generation completed and captured ${interceptedBuffers.length} network image buffer(s)!`);
+        break;
+      }
+    }
+
+    // 2. Process extracted or intercepted images (NEVER use loc.screenshot)
+    const saved: GeneratedImage[] = [];
+
+    // Fallback: If DOM extraction missed but network buffer captured
+    if (!extracted.length && interceptedBuffers.length > 0) {
+      console.log(`[EXTRACTOR] Saving ${interceptedBuffers.length} image(s) directly from network stream!`);
+      for (let i = 0; i < interceptedBuffers.length; i++) {
+        const item = interceptedBuffers[i];
+        const filename = `${prefix}_${Date.now()}_${i}.png`;
+        const filePath = path.join(OUTPUT_DIR, filename);
+        fs.writeFileSync(filePath, item.buffer);
+
+        saved.push({
+          file: `/output/${filename}`,
+          localPath: filePath,
+          width: 1024,
+          height: 1024,
+          alt: 'Gemini edited image'
+        });
+      }
+      return saved;
+    }
+
+    if (!extracted.length) {
+      const shot = `fail_${Date.now()}.png`;
+      await page.screenshot({ path: path.join(OUTPUT_DIR, shot), fullPage: true }).catch(() => {});
+      throw new Error('Gagal mendeteksi gambar hasil generasi dari Gemini. Pastikan prompt dan gambar tidak melanggar kebijakan Gemini.');
+    }
+
+    for (let i = 0; i < extracted.length; i++) {
+      const item = extracted[i];
+      const filename = `${prefix}_${Date.now()}_${i}.png`;
+      const filePath = path.join(OUTPUT_DIR, filename);
+
+      if (item.dataUrl && item.dataUrl.startsWith('data:image/')) {
+        const b64 = item.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+        fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+      } else if (interceptedBuffers.length > 0) {
+        fs.writeFileSync(filePath, interceptedBuffers[0].buffer);
+      } else if (item.src.startsWith('http://') || item.src.startsWith('https://')) {
+        // Direct download via page context request (bypasses DOM visibility and scroll requirements)
+        const resp = await page.request.get(item.src).catch(() => null);
+        if (resp && resp.ok()) {
+          const buf = await resp.body();
+          fs.writeFileSync(filePath, buf);
+        } else {
+          const nodeRes = await fetch(item.src).catch(() => null);
+          if (nodeRes && nodeRes.ok) {
+            const ab = await nodeRes.arrayBuffer();
+            fs.writeFileSync(filePath, Buffer.from(ab));
           }
         }
       }
-      return valid;
-    }, existingImages).catch(() => []);
 
-    if (candidates.length > 0) {
-      console.log(`[EXTRACTOR] Found ${candidates.length} Imagen image element(s) inside model-response (${candidates[0].width}x${candidates[0].height}) in ${elapsed}s`);
-      extracted = candidates;
-      break;
+      saved.push({
+        file: `/output/${filename}`,
+        localPath: filePath,
+        width: item.width,
+        height: item.height,
+        alt: item.alt
+      });
     }
 
-    // Auto-detect if Gemini replied with text only and re-prompt to generate image
-    if (elapsed >= 14 && elapsed <= 20) {
-      const sendBtnReady = await page.locator('button[aria-label*="Kirim" i], button[aria-label*="Send" i], button.send-button, [data-test-id="send-button"]').first().isVisible().catch(() => false);
-      if (sendBtnReady) {
-        console.log(`[EXTRACTOR] Gemini replied with text only after ${elapsed}s, injecting follow-up force image directive...`);
-        const input = page.locator('rich-textarea div[contenteditable="true"], div.ql-editor[contenteditable="true"], div[role="textbox"]').first();
-        if (await input.count()) {
-          await input.click({ force: true }).catch(() => {});
-          await page.keyboard.type('Hasilkan dan buatkan gambar visualnya sekarang juga (generate the image now)', { delay: 6 }).catch(() => {});
-          await page.keyboard.press('Enter').catch(() => {});
-          await page.waitForTimeout(2500);
-        }
-      }
-    }
-
-    const bodyText = await page.evaluate(() => document.body.innerText.slice(-1500)).catch(() => '');
-    if (/tidak dapat membuat gambar|can't generate images|rate limit|coba lagi beberapa saat/i.test(bodyText)) {
-      break;
-    }
-  }
-
-  if (!extracted.length) {
-    const shot = `fail_${Date.now()}.png`;
-    await page.screenshot({ path: path.join(OUTPUT_DIR, shot), fullPage: true }).catch(() => {});
-    throw new Error('Gagal mendeteksi gambar hasil generasi. Pastikan prompt dan gambar sesuai kebijakan Gemini.');
-  }
-
-  const saved: GeneratedImage[] = [];
-  for (let i = 0; i < extracted.length; i++) {
-    const item = extracted[i];
-    const filename = `${prefix}_${Date.now()}_${i}.png`;
-    const filePath = path.join(OUTPUT_DIR, filename);
-
-    if (item.dataUrl) {
-      const b64 = item.dataUrl.replace(/^data:image\/\w+;base64,/, '');
-      fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
-    } else {
-      const loc = page.locator(`img[src="${item.src}"]`).first();
-      if (await loc.count()) {
-        await loc.screenshot({ path: filePath });
-      }
-    }
-
-    saved.push({
-      file: `/output/${filename}`,
-      localPath: filePath,
-      width: item.width,
-      height: item.height,
-      alt: item.alt
-    });
-  }
-
-  const totalTime = Math.round((Date.now() - start) / 1000);
-  console.log(`[EXTRACTOR] Successfully delivered ${saved.length} image(s) in ${totalTime}s -> ${saved[0]?.file}`);
-  return saved;
+    const totalTime = Math.round((Date.now() - start) / 1000);
+    console.log(`[EXTRACTOR] Successfully delivered ${saved.length} image(s) in ${totalTime}s -> ${saved[0]?.file}`);
+    return saved;
   } finally {
     page.off('response', onResponse);
   }

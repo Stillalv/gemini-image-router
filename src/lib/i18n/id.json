@@ -11,7 +11,8 @@
     "deleteSession": "Hapus sesi",
     "tabPool": "Tab Pool",
     "active": "aktif",
-    "queued": "Antre"
+    "queued": "antre",
+    "poolLabel": "Pool"
   },
   "chat": {
     "generateMode": "Mode: Buat Gambar (Text-to-Image)",
@@ -28,23 +29,30 @@
     "pressEnter": "Tekan Enter untuk mengirim. Anda dapat drag & drop gambar langsung ke kolom teks.",
     "attachImage": "Lampirkan Gambar (+)",
     "attachedImage": "Gambar terlampir",
+    "readyToEdit": "Gambar siap diedit",
     "removeAttachment": "Hapus lampiran",
     "revertEdit": "Revert / Edit",
     "revertTooltip": "Salin dan revert prompt & lampiran kembali ke kolom input",
     "copyText": "Salin Teks",
     "copied": "Tersalin",
+    "copy": "Salin",
     "you": "Anda",
     "assistant": "Gemini",
     "fullSizeEdit": "Buka Ukuran Penuh / Edit",
     "download": "Unduh",
     "downloading": "Mengunduh...",
     "copyLink": "Salin Link URL Asli",
-    "openNewTab": "Buka ukuran penuh di tab baru"
+    "openNewTab": "Buka ukuran penuh di tab baru",
+    "send": "Kirim",
+    "selectRatioTitle": "Pilih Rasio Gambar",
+    "selectModelTitle": "Pilih Model AI Gemini & Bobot Kuota",
+    "attachImagePrompt": "Lampirkan gambar untuk diedit (PNG, JPG, WEBP)"
   },
   "modal": {
     "pointEditArea": "Tunjuk & Edit Area",
     "clickingArea": "Klik Area Gambar...",
     "editPromptPlaceholder": "Ketik instruksi edit untuk area ini (misal: terjemahkan teks balon / ganti warna)...",
+    "editPromptGeneralPlaceholder": "Ketik instruksi edit gambar (misal: ubah rasio 1:1, ubah pose, ubah latar)...",
     "clickAreaFirst": "Klik area gambar di atas terlebih dahulu...",
     "sendEdit": "Kirim Edit",
     "pointEditTip": "Klik tombol \"Tunjuk & Edit Area\" di kanan atas untuk menandai bagian spesifik yang ingin diubah.",
@@ -57,7 +65,122 @@
     "textToImage": "Text-to-Image (Buat Baru)",
     "textToImageDesc": "Hasilkan gambar berkualitas tinggi dari deskripsi teks.",
     "imageToImage": "Image-to-Image (Edit Gambar)",
-    "imageToImageDesc": "Lampirkan gambar dan ubah bagian tertentu dengan instruksi AI."
+    "imageToImageDesc": "Lampirkan gambar dan ubah bagian tertentu dengan instruksi AI.",
+    "wholeImage": "Seluruh Gambar",
+    "focusArea": "Fokus edit area",
+    "compareDescription": "Tampilan komparasi perbandingan gambar asli vs hasil edit Gemini.",
+    "top": "atas",
+    "bottom": "bawah",
+    "center": "tengah",
+    "left": "kiri",
+    "right": "kanan"
+  },
+  "alerts": {
+    "confirmDeleteSession": "Hapus sesi ini beserta riwayatnya?",
+    "requestFailed": "Gagal",
+    "systemError": "Terjadi kesalahan sistem",
+    "networkError": "Error",
+    "invalidImageMime": "Hanya file gambar (PNG, JPG, WEBP) yang diperbolehkan",
+    "urlCopied": "Link URL berhasil disalin",
+    "needLoginPlan": "Silakan daftar akun terlebih dahulu untuk mengaktifkan paket.",
+    "loginRequired": "Autentikasi Diperlukan",
+    "signupUltraSuccess": "Akun Ultra Anda berhasil dibuat dan aktif!",
+    "loginSuccess": "Login berhasil!",
+    "logoutSuccess": "Anda telah keluar.",
+    "regFailed": "Gagal mendaftar.",
+    "loginFailed": "Email atau password salah."
+  },
+  "models": {
+    "title": "MODEL & USAGE",
+    "costPerReq": "COST / REQ",
+    "aspectTitle": "ASPECT",
+    "auto": "auto",
+    "3.7-flash": {
+      "name": "3.7 Flash",
+      "badge": "2x",
+      "tag": "Balanced",
+      "description": "Standar Serbaguna & Kualitas Seimbang (Default)"
+    },
+    "3.5-flash-lite": {
+      "name": "3.5 Flash-Lite",
+      "badge": "1x",
+      "tag": "Fast",
+      "description": "Generasi Cepat & Paling Hemat Kuota"
+    },
+    "3.1-pro": {
+      "name": "3.1 Pro",
+      "badge": "3x",
+      "tag": "Advanced",
+      "description": "Penalaran Mendalam untuk Prompt Kompleks"
+    },
+    "extended-thinking": {
+      "name": "Extended Thinking",
+      "badge": "4x",
+      "tag": "Deep Thinking",
+      "description": "Deep Chain-of-Thought & Tata Letak Bertingkat"
+    }
+  },
+  "docs": {
+    "title": "Dokumentasi API",
+    "subtitle": "Spesifikasi Endpoint Text-to-Image, Image-to-Image & Manajemen Sesi",
+    "requestBody": "Request Body (JSON)",
+    "copy": "Salin",
+    "copied": "Tersalin",
+    "curlSnippet": "Contoh cURL",
+    "pythonSnippet": "Contoh Python (requests)",
+    "nodeSnippet": "Contoh JavaScript / Node.js (fetch)",
+    "tabs": {
+      "generate": "POST /api/generate",
+      "edit": "POST /api/edit",
+      "sessions": "CRUD /api/sessions",
+      "auth": "Autentikasi API",
+      "curl": "cURL",
+      "python": "Python",
+      "javascript": "JavaScript / Node.js"
+    },
+    "generate": {
+      "title": "Text-to-Image Generation",
+      "desc": "Menghasilkan gambar berkualitas tinggi dari deskripsi teks secara otomatis melalui Google Gemini Imagen 3.",
+      "promptParam": "prompt (string, wajib) : Deskripsi detail gambar yang ingin dihasilkan (maks 2.000 karakter)",
+      "sessionParam": "session_id (string, opsional) : ID sesi percakapan untuk mengelompokkan riwayat",
+      "aspectRatioParam": "aspect_ratio (string, opsional) : Rasio aspek target (Auto, 1:1, 16:9, 9:16, 4:3, 3:4, 2:1, 1:2)",
+      "modelParam": "model (string, opsional) : Model AI Gemini (3.7-flash, 3.5-flash-lite, 3.1-pro, extended-thinking)"
+    },
+    "edit": {
+      "title": "Image-to-Image Editing",
+      "desc": "Memodifikasi dan mengedit bagian tertentu dari gambar input berdasarkan instruksi prompt alami.",
+      "promptParam": "prompt (string, wajib) : Instruksi perbaikan, perubahan gaya, atau pengeditan area",
+      "imageParam": "image (string, wajib) : Gambar masukan dalam format Base64 Data URL atau URL gambar",
+      "sessionParam": "session_id (string, opsional) : ID sesi percakapan terkait",
+      "aspectRatioParam": "aspect_ratio (string, opsional) : Rasio aspek target hasil edit gambar",
+      "modelParam": "model (string, opsional) : Model AI Gemini yang digunakan"
+    },
+    "sessions": {
+      "title": "CRUD Sesi & Riwayat Percakapan",
+      "desc": "Semua sesi percakapan dan pesan tersimpan otomatis di database SQLite lokal.",
+      "listTitle": "Daftar Sesi",
+      "listDesc": "GET /api/sessions : Ambil seluruh riwayat sesi percakapan pengguna.",
+      "createTitle": "Buat Sesi Baru",
+      "createDesc": "POST /api/sessions : Buat sesi baru dengan tipe 'generate' atau 'edit'.",
+      "detailTitle": "Detail & Pesan Sesi",
+      "detailDesc": "GET /api/sessions/:id : Ambil detail sesi dan seluruh pesan di dalamnya.",
+      "deleteTitle": "Hapus Sesi",
+      "deleteDesc": "DELETE /api/sessions/:id : Hapus sesi beserta seluruh data pesannya."
+    },
+    "auth": {
+      "title": "Autentikasi & Integrasi API Key",
+      "desc": "Gunakan header Authorization: Bearer <API_KEY> untuk mengautentikasi request integrasi dari n8n, Antigravity, OpenCode, atau curl.",
+      "headerLabel": "Header Autentikasi:",
+      "headerValue": "Authorization: Bearer gem_sec_kunci_anda"
+    },
+    "responses": {
+      "title": "Format Respon & Error Codes",
+      "successDesc": "200 OK: Mengembalikan properti { ok: true, images: [{ file, url, width, height }] }",
+      "error400": "400 Bad Request: Parameter prompt/gambar tidak valid atau melebihi batas ukuran",
+      "error401": "401 Unauthorized: API Key tidak disertakan atau sudah dicabut",
+      "error403": "403 Quota Exceeded: Kuota request harian akun Anda telah habis",
+      "error500": "500 Internal Error: Terjadi kegagalan automasi browser atau timeout"
+    }
   },
   "account": {
     "title": "Akun & Paket Langganan",
@@ -68,9 +191,58 @@
     "remaining": "tersisa",
     "availablePlans": "Pilihan Paket Langganan",
     "activePlan": "Paket Aktif",
+    "switchAnytime": "Bebas ganti paket kapan saja",
+    "alreadyLoggedIn": "Anda telah masuk",
+    "switchAccountPrompt": "Ingin berganti akun?",
+    "signupUltraBtn": "Daftar & Aktifkan Ultra Plan (1.000 req/hari)",
     "freePlan": "Free Plan (20 req/hari)",
     "proPlan": "Pro Plan (100 req/hari)",
-    "ultraPlan": "Ultra Plan (1.000 req/hari)"
+    "ultraPlan": "Ultra Plan (1.000 req/hari)",
+    "apiKeysTitle": "API Key & Akses Integrasi",
+    "apiKeysDesc": "Gunakan API key untuk mengakses endpoint dari n8n, Antigravity, OpenCode, atau curl.",
+    "createKey": "Buat API Key Baru",
+    "keyNamePlaceholder": "Nama API Key (cth: n8n Production)",
+    "generateKeyBtn": "Generate Key",
+    "copyRawKeyTip": "Salin API key Anda sekarang. Kunci ini hanya akan ditampilkan sekali!",
+    "revokeKey": "Cabut",
+    "keyCreated": "API Key berhasil dibuat",
+    "login": "Masuk",
+    "signup": "Daftar Akun Baru",
+    "logout": "Keluar (Logout)",
+    "authTab": "Masuk / Daftar",
+    "name": "Nama Lengkap",
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Masuk ke Akun Anda",
+    "signupTitle": "Buat Akun Baru (Otomatis Ultra)",
+    "loginBtn": "Masuk Sekarang",
+    "signupBtn": "Daftar & Aktifkan Akun",
+    "dontHaveAccount": "Belum punya akun? Daftar",
+    "alreadyHaveAccount": "Sudah punya akun? Masuk",
+    "logoutSuccess": "Berhasil keluar",
+    "authSuccess": "Autentikasi berhasil!",
+    "noKeys": "Belum ada API Key yang dibuat.",
+    "authHeaderTitle": "Header Autentikasi API:",
+    "guestBannerTitle": "Buka Akses Ultra Plan VIP (1.000 Request/Hari)",
+    "guestBannerDesc": "Anda saat ini menggunakan mode Tamu (Free - 20 req/hari). Daftar akun gratis sekarang untuk otomatis mendapatkan paket Ultra VIP & API Keys!",
+    "guestBannerBtn": "Daftar Akun Ultra Sekarang",
+    "guestAuthRequired": "Autentikasi Diperlukan",
+    "guestAuthRequiredDesc": "Silakan Masuk atau Daftar akun baru untuk membuat dan mengelola API Key integrasi Anda.",
+    "openAuthFormBtn": "Buka Form Masuk / Daftar"
+  },
+  "plans": {
+    "free": {
+      "name": "Free Plan",
+      "description": "20 request generasi gambar per hari"
+    },
+    "pro": {
+      "name": "Pro Plan",
+      "description": "100 request generasi gambar per hari (Prioritas Cepat)"
+    },
+    "ultra": {
+      "name": "Ultra Plan",
+      "description": "1.000 request per hari (Prioritas Tertinggi / VIP)"
+    }
   },
   "settings": {
     "title": "Pengaturan",

@@ -10,10 +10,11 @@
     "login": "bun run src/lib/server/browser/login.ts"
   },
   "dependencies": {
-    "playwright": "^1.48.0",
-    "zod": "^3.23.8",
     "clsx": "^2.1.1",
-    "lucide-svelte": "^0.475.0"
+    "lucide-svelte": "^0.475.0",
+    "mongodb": "^7.6.0",
+    "playwright": "^1.48.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.2.11",

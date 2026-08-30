@@ -127,7 +127,7 @@
       <div class="pt-1 w-fit max-w-xl">
         <ImageCard
           imageUrl={message.image_url}
-          {originalImageUrl}
+          originalImageUrl={sessionType === 'edit' ? originalImageUrl : null}
           width={message.width}
           height={message.height}
           prompt={message.content}

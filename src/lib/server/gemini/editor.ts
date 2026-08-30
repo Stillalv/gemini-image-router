@@ -1,5 +1,6 @@
 import { acquirePage, releasePage } from '../browser/pool';
 import { extractGeneratedImages } from './extractor';
+import { applyGeminiModel } from './mode-switcher';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { GeneratedImage } from '$lib/types';
@@ -9,6 +10,20 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 async function resolveAttachment(imageInput: string): Promise<string> {
   const tempPath = path.join(TEMP_DIR, `upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`);
+
+  // 1. Direct local output file match
+  if (imageInput.includes('/output/')) {
+    const filename = path.basename(imageInput.split('?')[0]);
+    const local = path.join(path.resolve('output'), filename);
+    if (fs.existsSync(local)) return local;
+  }
+
+  // 2. Direct local file path
+  if (fs.existsSync(imageInput)) {
+    return path.resolve(imageInput);
+  }
+
+  // 3. Base64 Data URL
   if (imageInput.startsWith('data:image/')) {
     const b64 = imageInput.replace(/^data:image\/\w+;base64,/, '');
     fs.writeFileSync(tempPath, Buffer.from(b64, 'base64'));
@@ -21,22 +36,19 @@ async function resolveAttachment(imageInput: string): Promise<string> {
     const buf = await res.arrayBuffer();
     fs.writeFileSync(tempPath, Buffer.from(buf));
     return tempPath;
-  } else if (fs.existsSync(imageInput)) {
-    return path.resolve(imageInput);
-  } else if (imageInput.startsWith('/output/')) {
-    const local = path.join(path.resolve('output'), path.basename(imageInput));
-    if (fs.existsSync(local)) return local;
   }
+
   throw new Error('Format attachment tidak valid (gunakan Base64, URL, atau file path).');
 }
 
-export function formatEditPrompt(rawPrompt: string): string {
+export function formatEditPrompt(rawPrompt: string, aspectRatio?: string): string {
   const p = rawPrompt.trim();
-  return `Edit dan modifikasi gambar yang saya lampirkan ini. Buatkan dan hasilkan gambar barunya secara langsung (generate edited image) sesuai instruksi berikut: "${p}". Hasilkan output visual gambar hasil edit tanpa hanya membalas dengan teks.`;
+  const ratioSpec = aspectRatio && aspectRatio !== 'Auto' ? ` dalam rasio aspek ${aspectRatio} (${aspectRatio} aspect ratio)` : '';
+  return `Edit dan modifikasi gambar yang saya lampirkan ini secara visual: "${p}"${ratioSpec}. Buatkan gambar visual baru hasil modifikasinya sekarang juga (generate edited image).`;
 }
 
-export async function runEditTask(rawPrompt: string, imageInput: string): Promise<GeneratedImage[]> {
-  const prompt = formatEditPrompt(rawPrompt);
+export async function runEditTask(rawPrompt: string, imageInput: string, aspectRatio?: string, modelId?: string): Promise<GeneratedImage[]> {
+  const prompt = formatEditPrompt(rawPrompt, aspectRatio);
   const tempFilePath = await resolveAttachment(imageInput);
   const page = await acquirePage();
   const taskId = Math.random().toString(36).slice(2, 7);
@@ -46,6 +58,12 @@ export async function runEditTask(rawPrompt: string, imageInput: string): Promis
     await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(800);
     await page.keyboard.press('Escape').catch(() => {});
+
+    // Switch model if specified
+    if (modelId) {
+      console.log(`[EDIT:${taskId}] Applying model "${modelId}"...`);
+      await applyGeminiModel(page, modelId);
+    }
 
     const existingImages = await page.evaluate(() => [...document.querySelectorAll('img')].map((i) => i.src)).catch(() => []);
 
@@ -79,7 +97,7 @@ export async function runEditTask(rawPrompt: string, imageInput: string): Promis
     }
 
     console.log(`[EDIT:${taskId}] Prompt sent. Waiting for edited output from Gemini...`);
-    const results = await extractGeneratedImages(page, existingImages, 'edit');
+    const results = await extractGeneratedImages(page, existingImages, 'edit', 140000);
     console.log(`[EDIT:${taskId}] Task completed successfully with ${results.length} image(s)!`);
     return results;
   } finally {

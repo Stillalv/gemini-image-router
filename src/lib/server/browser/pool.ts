@@ -59,6 +59,8 @@ async function createWarmPage(): Promise<Page> {
   return page;
 }
 
+const QUEUE_TIMEOUT_MS = 45000;
+
 export async function acquirePage(): Promise<Page> {
   await getBrowserContext();
 
@@ -76,8 +78,23 @@ export async function acquirePage(): Promise<Page> {
     return newPage;
   }
 
-  return new Promise((resolve) => {
-    taskQueue.push(resolve);
+  return new Promise<Page>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const queueEntry = (page: Page) => {
+      if (timer) clearTimeout(timer);
+      resolve(page);
+    };
+
+    timer = setTimeout(() => {
+      const idx = taskQueue.indexOf(queueEntry);
+      if (idx !== -1) {
+        taskQueue.splice(idx, 1);
+      }
+      reject(new Error('[POOL] Browser pool queue timeout: No available tabs within 45s'));
+    }, QUEUE_TIMEOUT_MS);
+
+    taskQueue.push(queueEntry);
   });
 }
 
@@ -86,10 +103,14 @@ export function releasePage(page: Page): void {
   if (page.isClosed()) {
     if (taskQueue.length > 0) {
       const next = taskQueue.shift()!;
-      createWarmPage().then((newPage) => {
-        busyPages.add(newPage);
-        next(newPage);
-      });
+      createWarmPage()
+        .then((newPage) => {
+          busyPages.add(newPage);
+          next(newPage);
+        })
+        .catch((err) => {
+          console.error('[POOL] Failed to spawn warm page for queued task:', err);
+        });
     }
     return;
   }

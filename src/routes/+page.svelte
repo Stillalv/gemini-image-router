@@ -7,7 +7,8 @@
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import AccountModal from '$lib/components/AccountModal.svelte';
   import { account } from '$lib/stores/account';
-  import type { Session, Message, SessionType } from '$lib/types';
+  import { t } from '$lib/i18n';
+  import type { Session, Message, SessionType, GeminiModelId } from '$lib/types';
 
   let sessions: Session[] = $state([]);
   let currentSessionId: string | null = $state(null);
@@ -38,8 +39,10 @@
     try {
       const res = await fetch(`/api/sessions/${id}`);
       const data = await res.json();
-      if (data.ok) {
-        messages = data.messages || [];
+      if (data.ok && Array.isArray(data.messages)) {
+        if (!isLoading || currentSessionId !== id || data.messages.length > 0) {
+          messages = data.messages;
+        }
       }
     } catch {}
   }
@@ -55,13 +58,16 @@
       const data = await res.json();
       if (data.ok && data.session) {
         sessions = [data.session, ...sessions];
-        selectSession(data.session.id);
+        currentSessionId = data.session.id;
+        messages = [];
+        return data.session;
       }
     } catch {}
+    return null;
   }
 
   async function deleteSession(id: string) {
-    if (!confirm('Hapus sesi ini beserta riwayatnya?')) return;
+    if (!confirm($t('alerts.confirmDeleteSession'))) return;
     try {
       await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
       sessions = sessions.filter(s => s.id !== id);
@@ -75,28 +81,44 @@
     } catch {}
   }
 
-  async function handleSendMessage(prompt: string, attachmentBase64?: string | null) {
+  async function handleSendMessage(prompt: string, attachmentBase64?: string | null, aspectRatio?: string, model?: GeminiModelId) {
     if (!currentSessionId) {
       await createSession(attachmentBase64 ? 'edit' : 'generate');
     }
 
     const activeId = currentSessionId!;
-    const isEdit = currentSession?.type === 'edit';
+    const isEdit = Boolean(attachmentBase64) || currentSession?.type === 'edit';
+
+    // If edit mode and no direct attachment was passed, fallback to last generated/attached image in session
+    let imageToEdit = attachmentBase64;
+    if (isEdit && !imageToEdit && messages.length > 0) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].image_url) {
+          imageToEdit = messages[i].image_url;
+          break;
+        } else if (messages[i].attachment_url) {
+          imageToEdit = messages[i].attachment_url;
+          break;
+        }
+      }
+    }
 
     const tempUserMsg: Message = {
       id: 'temp_' + Date.now(),
       session_id: activeId,
       role: 'user',
       content: prompt,
-      attachment_url: attachmentBase64 || null,
+      attachment_url: imageToEdit || null,
       created_at: Date.now()
     };
     messages = [...messages, tempUserMsg];
     isLoading = true;
 
     try {
-      const endpoint = isEdit ? '/api/edit' : '/api/generate';
-      const payload = isEdit ? { prompt, image: attachmentBase64, session_id: activeId } : { prompt, session_id: activeId };
+      const endpoint = (isEdit && imageToEdit) ? '/api/edit' : '/api/generate';
+      const payload = (isEdit && imageToEdit)
+        ? { prompt, image: imageToEdit, session_id: activeId, aspect_ratio: aspectRatio, model }
+        : { prompt, session_id: activeId, aspect_ratio: aspectRatio, model };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -106,14 +128,18 @@
       const data = await res.json();
 
       if (data.ok && data.images?.length) {
-        account.incrementUsage(1);
+        if (data.quota) {
+          account.setQuota(data.quota);
+        } else {
+          account.incrementUsage(1);
+        }
         await selectSession(activeId);
         await loadSessions();
       } else {
-        alert('Gagal: ' + (data.error || 'Terjadi kesalahan sistem'));
+        alert($t('alerts.requestFailed') + ': ' + (data.error || $t('alerts.systemError')));
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      alert($t('alerts.networkError') + ': ' + err.message);
     } finally {
       isLoading = false;
     }

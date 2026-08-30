@@ -1,14 +1,16 @@
 import { acquirePage, releasePage } from '../browser/pool';
 import { extractGeneratedImages } from './extractor';
+import { applyGeminiModel } from './mode-switcher';
 import type { GeneratedImage } from '$lib/types';
 
-export function formatGeneratePrompt(prompt: string): string {
+export function formatGeneratePrompt(prompt: string, aspectRatio?: string): string {
   const p = prompt.trim();
-  return `Buatkan dan hasilkan gambar visual baru secara langsung (generate image) sesuai deskripsi: "${p}". Hasilkan output gambar Imagen tanpa hanya membalas dengan teks.`;
+  const ratioSpec = aspectRatio && aspectRatio !== 'Auto' ? ` dalam rasio aspek ${aspectRatio} (${aspectRatio} aspect ratio)` : '';
+  return `Buatkan dan hasilkan gambar visual baru secara langsung: "${p}"${ratioSpec}. Generate Imagen image.`;
 }
 
-export async function runGenerateTask(rawPrompt: string): Promise<GeneratedImage[]> {
-  const prompt = formatGeneratePrompt(rawPrompt);
+export async function runGenerateTask(rawPrompt: string, aspectRatio?: string, modelId?: string): Promise<GeneratedImage[]> {
+  const prompt = formatGeneratePrompt(rawPrompt, aspectRatio);
   const page = await acquirePage();
   const taskId = Math.random().toString(36).slice(2, 7);
 
@@ -17,6 +19,12 @@ export async function runGenerateTask(rawPrompt: string): Promise<GeneratedImage
     await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(800);
     await page.keyboard.press('Escape').catch(() => {});
+
+    // Switch model if specified
+    if (modelId) {
+      console.log(`[GEN:${taskId}] Applying model "${modelId}"...`);
+      await applyGeminiModel(page, modelId);
+    }
 
     const existingImages = await page.evaluate(() => [...document.querySelectorAll('img')].map((i) => i.src)).catch(() => []);
 
@@ -37,7 +45,7 @@ export async function runGenerateTask(rawPrompt: string): Promise<GeneratedImage
     }
 
     console.log(`[GEN:${taskId}] Prompt sent. Waiting for generated output from Gemini...`);
-    const results = await extractGeneratedImages(page, existingImages, 'gen');
+    const results = await extractGeneratedImages(page, existingImages, 'gen', 120000);
     console.log(`[GEN:${taskId}] Task completed successfully with ${results.length} image(s)!`);
     return results;
   } finally {

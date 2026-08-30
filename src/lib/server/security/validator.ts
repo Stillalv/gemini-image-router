@@ -2,13 +2,17 @@ import { z } from 'zod';
 
 export const generateSchema = z.object({
   prompt: z.string().min(1, 'Prompt wajib diisi').max(2000, 'Prompt maksimal 2000 karakter'),
-  session_id: z.string().optional()
+  session_id: z.string().optional(),
+  aspect_ratio: z.string().optional(),
+  model: z.enum(['3.7-flash', '3.5-flash-lite', '3.1-pro', 'extended-thinking']).optional()
 });
 
 export const editSchema = z.object({
   prompt: z.string().min(1, 'Prompt instruksi edit wajib diisi').max(2000, 'Prompt maksimal 2000 karakter'),
   image: z.string().min(1, 'Attachment gambar wajib disertakan'),
-  session_id: z.string().optional()
+  session_id: z.string().optional(),
+  aspect_ratio: z.string().optional(),
+  model: z.enum(['3.7-flash', '3.5-flash-lite', '3.1-pro', 'extended-thinking']).optional()
 });
 
 export const sessionCreateSchema = z.object({

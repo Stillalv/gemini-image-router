@@ -6,7 +6,10 @@
     Trash2,
     Settings,
     BookOpen,
-    PanelLeftClose
+    PanelLeftClose,
+    Crown,
+    Zap,
+    User
   } from 'lucide-svelte';
   import { account, PLANS } from '$lib/stores/account';
   import { t } from '$lib/i18n';
@@ -131,7 +134,7 @@
           {$t('account.dailyUsage')}
         </span>
         <span class="font-bold text-neutral-800 dark:text-neutral-200">
-          {$account.requestsUsedToday} / {PLANS[$account.plan].maxDaily}
+          {$account.requestsUsedToday} / {$account.maxDaily || PLANS[$account.plan]?.maxDaily || 20}
         </span>
       </div>
 
@@ -139,7 +142,7 @@
       <div class="w-full bg-neutral-100 dark:bg-[#2c2c30] h-1.5 rounded-full overflow-hidden">
         <div
           class="bg-neutral-900 dark:bg-white h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-          style="width: {Math.min(100, Math.max(4, ($account.requestsUsedToday / PLANS[$account.plan].maxDaily) * 100))}%"
+          style="width: {Math.min(100, Math.max(4, ($account.requestsUsedToday / ($account.maxDaily || PLANS[$account.plan]?.maxDaily || 20)) * 100))}%"
         ></div>
       </div>
     </div>
@@ -150,22 +153,38 @@
       <button
         type="button"
         onclick={onOpenAccount}
-        class="flex-1 flex items-center gap-2 p-1.5 -ml-1 text-left rounded-xl hover:bg-neutral-200/60 dark:hover:bg-neutral-800/70 active:scale-[0.98] transition-all duration-150 min-w-0 group/prof cursor-pointer"
-        title="Buka Pengaturan Akun & Paket"
+        class="flex-1 flex items-center gap-2.5 p-1.5 -ml-1 text-left rounded-xl hover:bg-neutral-200/60 dark:hover:bg-neutral-800/70 active:scale-[0.98] transition-all duration-150 min-w-0 group/prof cursor-pointer select-none"
+        title={$t('account.title')}
       >
-        <!-- Avatar Circle with Scale Micro-Motion -->
-        <div class="w-8 h-8 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold flex items-center justify-center text-xs flex-shrink-0 shadow-xs group-hover/prof:scale-105 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]">
-          {$account.name.charAt(0).toUpperCase()}
+        <!-- Avatar Circle with Scale Micro-Motion (Liquid Gold to Orange Wave) -->
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs flex-shrink-0 shadow-xs group-hover/prof:scale-105 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none {$account.plan === 'ultra' ? 'liquid-gold-surface text-neutral-950 font-black' : $account.plan === 'pro' ? 'bg-sky-600 text-white font-bold' : 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold'}">
+          {($account.name || 'T').charAt(0).toUpperCase()}
         </div>
 
-        <div class="min-w-0 flex-1">
-          <div class="text-xs font-semibold text-neutral-900 dark:text-white truncate group-hover/prof:underline decoration-neutral-400 underline-offset-2">
-            {$account.email}
+        <div class="min-w-0 flex-1 pointer-events-none space-y-1">
+          <div class="text-xs font-semibold text-neutral-900 dark:text-white truncate group-hover/prof:underline decoration-neutral-400 underline-offset-2 leading-tight">
+            {$account.isLoggedIn ? $account.email : $account.name}
           </div>
-          <div class="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1">
-            <span class="px-1.5 py-0.2 rounded bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-semibold text-[9px] uppercase tracking-wider">
-              {PLANS[$account.plan].badge}
-            </span>
+          <div class="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1.5 pt-0.5">
+            {#if $account.plan === 'ultra'}
+              <span class="px-1.5 py-0.5 rounded-[4px] liquid-gold-badge text-neutral-950 font-black text-[8px] uppercase tracking-wider inline-flex items-center gap-1 shadow-xs">
+                <Crown class="w-2.5 h-2.5 text-neutral-950" />
+                <span>VIP ULTRA</span>
+              </span>
+            {:else if $account.plan === 'pro'}
+              <span class="px-1.5 py-0.5 rounded-[4px] bg-sky-500 text-white font-black text-[8px] uppercase tracking-wider inline-flex items-center gap-1 shadow-xs">
+                <Zap class="w-2.5 h-2.5 text-white" />
+                <span>PRO</span>
+              </span>
+            {:else}
+              <span class="px-1.5 py-0.5 rounded-[4px] bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold text-[8px] uppercase tracking-wider inline-flex items-center gap-1">
+                <User class="w-2.5 h-2.5 text-neutral-500 dark:text-neutral-400" />
+                <span>FREE</span>
+              </span>
+            {/if}
+            {#if !$account.isLoggedIn}
+              <span class="text-[9px] text-amber-500 font-semibold">{$t('account.login')}</span>
+            {/if}
           </div>
         </div>
       </button>
