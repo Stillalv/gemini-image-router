@@ -75,7 +75,11 @@ export async function runEditTask(
     await page.waitForTimeout(1000);
     await page.keyboard.press('Escape').catch(() => {});
 
-    // Switch model if specified
+    // 1. Wait for editor box to be ready
+    const input = page.locator('rich-textarea div[contenteditable="true"], div.ql-editor[contenteditable="true"], div[contenteditable="true"][role="textbox"]').first();
+    await input.waitFor({ state: 'visible', timeout: 35000 });
+
+    // 2. Switch model if specified
     if (modelId) {
       console.log(`[EDIT:${taskId}] Applying model "${modelId}"...`);
       await applyGeminiModel(page, modelId);
@@ -85,7 +89,7 @@ export async function runEditTask(
 
     const existingImages = await page.evaluate(() => [...document.querySelectorAll('img')].map((i) => i.src)).catch(() => []);
 
-    // 1. Upload files directly to file input
+    // 3. Upload files directly to file input
     const fileInput = page.locator('input[type="file"]').first();
     let uploadSuccess = false;
 
@@ -110,22 +114,13 @@ export async function runEditTask(
       }
     }
 
-    await page.waitForTimeout(2000 + tempFilePaths.length * 500);
+    await page.waitForTimeout(2500 + tempFilePaths.length * 600);
 
-    // 2. Dismiss any open menu or Material backdrop overlays
+    // 4. Dismiss any open menu or Material backdrop overlays
     await page.keyboard.press('Escape').catch(() => {});
     await page.waitForTimeout(300);
 
-    // 3. Locate prompt textarea box
-    const inputSelectors = [
-      'rich-textarea div[contenteditable="true"]',
-      'div.ql-editor[contenteditable="true"]',
-      'div[contenteditable="true"]',
-      'div[role="textbox"]',
-      'textarea'
-    ];
-    const input = page.locator(inputSelectors.join(', ')).first();
-    await input.waitFor({ state: 'attached', timeout: 25000 });
+    // 5. Focus editor and type prompt
     await input.click({ force: true });
     await page.waitForTimeout(200);
     await page.keyboard.press('Control+A');
@@ -133,7 +128,7 @@ export async function runEditTask(
     await page.keyboard.type(prompt, { delay: 8 });
     await page.waitForTimeout(400);
 
-    // 4. Send prompt
+    // 6. Send prompt
     const sendBtn = page.locator('button[aria-label*="Kirim" i], button[aria-label*="Send" i], button.send-button, [data-test-id="send-button"]').first();
     if (await sendBtn.count() && (await sendBtn.isVisible().catch(() => false))) {
       await sendBtn.click().catch(() => page.keyboard.press('Enter'));
