@@ -71,23 +71,25 @@ export const POST: RequestHandler = async ({ request }) => {
     let images: GeneratedImage[] = [];
 
     if (mode === 'batch' && imageList.length > 1) {
-      // BATCH MODE: Process each image independently in parallel
-      const batchPromises = imageList.map((img) =>
-        runEditTask(prompt, img, aspect_ratio, model).catch((err) => {
-          console.error('[BATCH-EDIT] Subtask failed:', err?.message);
+      // BATCH MODE: Process each image independently in parallel with slight stagger to avoid Chrome profile contention
+      const batchPromises = imageList.map(async (img, idx) => {
+        if (idx > 0) await new Promise((r) => setTimeout(r, idx * 800));
+        return runEditTask(prompt, img, aspect_ratio, model).catch((err) => {
+          console.error(`[BATCH-EDIT:${idx + 1}] Subtask failed:`, err?.message);
           return [] as GeneratedImage[];
-        })
-      );
+        });
+      });
       const batchResults = await Promise.all(batchPromises);
       images = batchResults.flat();
     } else if (count > 1) {
-      // MULTI VARIATIONS: Run multiple composite turns in parallel
-      const variationPromises = Array.from({ length: count }, () =>
-        runEditTask(prompt, imageList, aspect_ratio, model).catch((err) => {
-          console.error('[MULTI-EDIT] Variation failed:', err?.message);
+      // MULTI VARIATIONS: Run multiple composite turns in parallel with stagger
+      const variationPromises = Array.from({ length: count }, async (_, idx) => {
+        if (idx > 0) await new Promise((r) => setTimeout(r, idx * 800));
+        return runEditTask(prompt, imageList, aspect_ratio, model).catch((err) => {
+          console.error(`[MULTI-EDIT:${idx + 1}] Variation failed:`, err?.message);
           return [] as GeneratedImage[];
-        })
-      );
+        });
+      });
       const varResults = await Promise.all(variationPromises);
       images = varResults.flat();
     } else {

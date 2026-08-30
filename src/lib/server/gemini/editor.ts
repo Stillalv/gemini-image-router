@@ -71,33 +71,61 @@ export async function runEditTask(
 
   try {
     console.log(`[EDIT:${taskId}] Navigating to Gemini App (${tempFilePaths.length} attachment(s))...`);
-    await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(800);
+    await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(1000);
     await page.keyboard.press('Escape').catch(() => {});
 
     // Switch model if specified
     if (modelId) {
       console.log(`[EDIT:${taskId}] Applying model "${modelId}"...`);
       await applyGeminiModel(page, modelId);
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(400);
     }
 
     const existingImages = await page.evaluate(() => [...document.querySelectorAll('img')].map((i) => i.src)).catch(() => []);
 
-    // Open upload menu
-    const uploadBtn = page.locator('button[aria-label*="Upload &" i], button[aria-label*="Upload and" i], .gem-menu-button button, .menu-button button').first();
-    if (await uploadBtn.count()) {
-      await uploadBtn.click();
-      await page.waitForTimeout(800);
-    }
-
+    // 1. Upload files directly to file input
     const fileInput = page.locator('input[type="file"]').first();
+    let uploadSuccess = false;
+
     if (await fileInput.count()) {
-      await fileInput.setInputFiles(tempFilePaths);
-      await page.waitForTimeout(2500 + tempFilePaths.length * 500);
+      try {
+        await fileInput.setInputFiles(tempFilePaths);
+        uploadSuccess = true;
+      } catch (err: any) {
+        console.warn(`[EDIT:${taskId}] Direct fileInput set failed, trying upload menu...`, err.message);
+      }
     }
 
-    const input = page.locator('rich-textarea div[contenteditable="true"], div.ql-editor[contenteditable="true"], div[role="textbox"]').first();
-    await input.waitFor({ state: 'visible', timeout: 20000 });
+    if (!uploadSuccess) {
+      const uploadBtn = page.locator('button[aria-label*="Upload &" i], button[aria-label*="Upload and" i], button[aria-label*="Tambahkan" i], .gem-menu-button button, .menu-button button').first();
+      if (await uploadBtn.count() && (await uploadBtn.isVisible().catch(() => false))) {
+        await uploadBtn.click();
+        await page.waitForTimeout(600);
+        const fallbackFileInput = page.locator('input[type="file"]').first();
+        if (await fallbackFileInput.count()) {
+          await fallbackFileInput.setInputFiles(tempFilePaths);
+        }
+      }
+    }
+
+    await page.waitForTimeout(2000 + tempFilePaths.length * 500);
+
+    // 2. Dismiss any open menu or Material backdrop overlays
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(300);
+
+    // 3. Locate prompt textarea box
+    const inputSelectors = [
+      'rich-textarea div[contenteditable="true"]',
+      'div.ql-editor[contenteditable="true"]',
+      'div[contenteditable="true"]',
+      'div[role="textbox"]',
+      'textarea'
+    ];
+    const input = page.locator(inputSelectors.join(', ')).first();
+    await input.waitFor({ state: 'attached', timeout: 25000 });
     await input.click({ force: true });
     await page.waitForTimeout(200);
     await page.keyboard.press('Control+A');
@@ -105,6 +133,7 @@ export async function runEditTask(
     await page.keyboard.type(prompt, { delay: 8 });
     await page.waitForTimeout(400);
 
+    // 4. Send prompt
     const sendBtn = page.locator('button[aria-label*="Kirim" i], button[aria-label*="Send" i], button.send-button, [data-test-id="send-button"]').first();
     if (await sendBtn.count() && (await sendBtn.isVisible().catch(() => false))) {
       await sendBtn.click().catch(() => page.keyboard.press('Enter'));
