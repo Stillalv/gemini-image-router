@@ -104,27 +104,49 @@
     await onSendMessage(targetPrompt, currentAttachments, targetRatio, targetModel, { count, mode });
   }
 
-  async function handleRevert(revertPrompt: string, attachmentUrl?: string | null) {
+  async function handleRevert(revertPrompt: string, attachmentUrls?: string[] | string | null) {
     prompt = revertPrompt;
-    if (attachmentUrl) {
-      if (attachmentUrl.startsWith('data:')) {
-        attachments = [{ id: crypto.randomUUID(), name: 'reverted.png', dataUrl: attachmentUrl }];
+    if (!attachmentUrls) {
+      attachments = [];
+      return;
+    }
+
+    const urls = Array.isArray(attachmentUrls) ? attachmentUrls : [attachmentUrls];
+    const loadedAttachments: AttachmentItem[] = [];
+
+    for (const url of urls) {
+      if (!url) continue;
+      if (url.startsWith('data:')) {
+        loadedAttachments.push({
+          id: crypto.randomUUID(),
+          name: 'reverted.png',
+          dataUrl: url
+        });
       } else {
         try {
-          const res = await fetch(attachmentUrl);
+          const res = await fetch(url);
           const blob = await res.blob();
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (typeof e.target?.result === 'string') {
-              attachments = [{ id: crypto.randomUUID(), name: attachmentUrl.split('/').pop() || 'reverted.png', dataUrl: e.target.result }];
-            }
-          };
-          reader.readAsDataURL(blob);
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve((e.target?.result as string) || url);
+            reader.readAsDataURL(blob);
+          });
+          loadedAttachments.push({
+            id: crypto.randomUUID(),
+            name: url.split('/').pop() || 'attachment.png',
+            dataUrl
+          });
         } catch {
-          attachments = [{ id: crypto.randomUUID(), name: 'attachment.png', dataUrl: attachmentUrl }];
+          loadedAttachments.push({
+            id: crypto.randomUUID(),
+            name: url.split('/').pop() || 'attachment.png',
+            dataUrl: url
+          });
         }
       }
     }
+
+    attachments = loadedAttachments;
   }
 
   async function handleApplyAreaEdit(imageUrl: string, editPrompt: string) {

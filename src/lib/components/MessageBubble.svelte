@@ -10,7 +10,7 @@
     message: Message;
     sessionType?: SessionType;
     originalImageUrl?: string | null;
-    onRevert?: (prompt: string, attachmentUrl?: string | null) => void;
+    onRevert?: (prompt: string, attachmentUrls?: string[] | string | null) => void;
     onApplyEdit?: (imageUrl: string, editPrompt: string) => void;
     onOpenModal?: (data: {
       imageUrl: string;
@@ -96,7 +96,7 @@
         {#if onRevert}
           <button
             type="button"
-            onclick={() => onRevert(message.content, message.attachment_url)}
+            onclick={() => onRevert(message.content, attachedImageList)}
             class="btn-spring flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200/80 dark:hover:bg-neutral-700 px-1.5 py-0.5 rounded cursor-pointer"
             title={$t('chat.revertTooltip')}
           >
