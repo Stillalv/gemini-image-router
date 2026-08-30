@@ -24,6 +24,7 @@
       model?: GeminiModelId,
       options?: { count?: number; mode?: 'composite' | 'batch' }
     ) => Promise<void>;
+    onStop?: () => void;
   }
 
   let {
@@ -32,7 +33,8 @@
     isLoading = false,
     isSidebarOpen,
     onToggleSidebar,
-    onSendMessage
+    onSendMessage,
+    onStop
   }: Props = $props();
 
   let prompt = $state('');
@@ -246,6 +248,7 @@
       sessionType={session?.type}
       {isLoading}
       onSend={handleSend}
+      {onStop}
     />
   </div>
 </div>

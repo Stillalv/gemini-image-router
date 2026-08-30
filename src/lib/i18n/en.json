@@ -44,9 +44,10 @@
     "copyLink": "Copy Original URL",
     "openNewTab": "Open full size in new tab",
     "send": "Send",
-    "selectRatioTitle": "Select Image Ratio",
-    "selectModelTitle": "Select Gemini AI Model & Quota Multiplier",
-    "attachImagePrompt": "Attach an image to edit (PNG, JPG, WEBP)"
+    "stop": "Stop Processing",
+    "selectRatioTitle": "Select Aspect Ratio",
+    "selectModelTitle": "Select Gemini AI Model & Cost Multiplier",
+    "attachImagePrompt": "Attach image to edit (PNG, JPG, WEBP)"
   },
   "modal": {
     "pointEditArea": "Point & Edit Area",

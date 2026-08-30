@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUp, Loader2, Plus, X, Sparkles, Layers } from 'lucide-svelte';
+  import { ArrowUp, Loader2, Plus, X, Sparkles, Layers, Square } from 'lucide-svelte';
   import { scale, fly } from 'svelte/transition';
   import { backOut, cubicOut } from 'svelte/easing';
   import AspectRatioPicker from './AspectRatioPicker.svelte';
@@ -17,6 +17,7 @@
     sessionType?: 'generate' | 'edit';
     isLoading?: boolean;
     onSend: () => void;
+    onStop?: () => void;
   }
 
   let {
@@ -26,7 +27,8 @@
     selectedModel = $bindable('3.7-flash'),
     sessionType = 'generate',
     isLoading = false,
-    onSend
+    onSend,
+    onStop
   }: Props = $props();
 
   let isDragging = $state(false);
@@ -228,20 +230,27 @@
         />
       </div>
 
-      <!-- Send Button -->
-      <button
-        type="button"
-        onclick={onSend}
-        disabled={(!prompt.trim() && attachments.length === 0) || isLoading}
-        class="btn-spring h-8 w-8 flex items-center justify-center bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-20 text-white dark:text-neutral-900 rounded-lg flex-shrink-0 cursor-pointer"
-        title={$t('chat.send')}
-      >
-        {#if isLoading}
-          <Loader2 class="w-4 h-4 animate-spin text-white dark:text-neutral-900" />
-        {:else}
+      <!-- Send / Stop Button -->
+      {#if isLoading}
+        <button
+          type="button"
+          onclick={onStop}
+          class="btn-spring h-8 w-8 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg flex-shrink-0 cursor-pointer shadow-xs transition-colors"
+          title={$t('chat.stop')}
+        >
+          <Square class="w-3.5 h-3.5 fill-current" />
+        </button>
+      {:else}
+        <button
+          type="button"
+          onclick={onSend}
+          disabled={!prompt.trim() && attachments.length === 0}
+          class="btn-spring h-8 w-8 flex items-center justify-center bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-20 text-white dark:text-neutral-900 rounded-lg flex-shrink-0 cursor-pointer"
+          title={$t('chat.send')}
+        >
           <ArrowUp class="w-4 h-4" />
-        {/if}
-      </button>
+        </button>
+      {/if}
     </div>
 
     <!-- Hidden File Input (Multiple images) -->

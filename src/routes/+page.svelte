@@ -80,6 +80,18 @@
     } catch {}
   }
 
+  const abortControllers = new Map<string, AbortController>();
+
+  function handleStop() {
+    if (!currentSessionId) return;
+    const controller = abortControllers.get(currentSessionId);
+    if (controller) {
+      controller.abort();
+      abortControllers.delete(currentSessionId);
+    }
+    loadingSessionIds = loadingSessionIds.filter(id => id !== currentSessionId);
+  }
+
   async function handleSendMessage(
     prompt: string,
     attachments?: AttachmentItem[] | string | null,
@@ -131,6 +143,9 @@
     }
     loadingSessionIds = [...loadingSessionIds, activeId];
 
+    const controller = new AbortController();
+    abortControllers.set(activeId, controller);
+
     try {
       const endpoint = (isEdit && imagesToEdit.length > 0) ? '/api/edit' : '/api/generate';
       const payload = (isEdit && imagesToEdit.length > 0)
@@ -155,7 +170,8 @@
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
       const data = await res.json();
 
@@ -173,8 +189,13 @@
         alert($t('alerts.requestFailed') + ': ' + (data.error || $t('alerts.systemError')));
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('[CHAT] Request cancelled by user.');
+        return;
+      }
       alert($t('alerts.networkError') + ': ' + err.message);
     } finally {
+      abortControllers.delete(activeId);
       loadingSessionIds = loadingSessionIds.filter(id => id !== activeId);
     }
   }
@@ -210,6 +231,7 @@
     {isSidebarOpen}
     onToggleSidebar={() => isSidebarOpen = !isSidebarOpen}
     onSendMessage={handleSendMessage}
+    onStop={handleStop}
   />
 
   <SessionModal
