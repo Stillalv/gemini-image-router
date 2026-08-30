@@ -14,7 +14,8 @@
   let currentSessionId: string | null = $state(null);
   let currentSession: Session | null = $derived(sessions.find(s => s.id === currentSessionId) || null);
   let messages: Message[] = $state([]);
-  let isLoading = $state(false);
+  let loadingSessionIds: string[] = $state([]);
+  let isCurrentSessionLoading = $derived(Boolean(currentSessionId && loadingSessionIds.includes(currentSessionId)));
   let isSidebarOpen = $state(true);
   let showSessionModal = $state(false);
   let showDocsModal = $state(false);
@@ -40,9 +41,7 @@
       const res = await fetch(`/api/sessions/${id}`);
       const data = await res.json();
       if (data.ok && Array.isArray(data.messages)) {
-        if (!isLoading || currentSessionId !== id || data.messages.length > 0) {
-          messages = data.messages;
-        }
+        messages = data.messages;
       }
     } catch {}
   }
@@ -126,8 +125,11 @@
       attachment_urls: imagesToEdit.length > 1 ? imagesToEdit : undefined,
       created_at: Date.now()
     };
-    messages = [...messages, tempUserMsg];
-    isLoading = true;
+
+    if (currentSessionId === activeId) {
+      messages = [...messages, tempUserMsg];
+    }
+    loadingSessionIds = [...loadingSessionIds, activeId];
 
     try {
       const endpoint = (isEdit && imagesToEdit.length > 0) ? '/api/edit' : '/api/generate';
@@ -163,7 +165,9 @@
         } else {
           account.incrementUsage(data.images.length || 1);
         }
-        await selectSession(activeId);
+        if (currentSessionId === activeId) {
+          await selectSession(activeId);
+        }
         await loadSessions();
       } else {
         alert($t('alerts.requestFailed') + ': ' + (data.error || $t('alerts.systemError')));
@@ -171,7 +175,7 @@
     } catch (err: any) {
       alert($t('alerts.networkError') + ': ' + err.message);
     } finally {
-      isLoading = false;
+      loadingSessionIds = loadingSessionIds.filter(id => id !== activeId);
     }
   }
 
@@ -188,6 +192,7 @@
   <SidePanel
     {sessions}
     {currentSessionId}
+    {loadingSessionIds}
     isOpen={isSidebarOpen}
     onToggle={() => isSidebarOpen = !isSidebarOpen}
     onSelectSession={selectSession}
@@ -201,7 +206,7 @@
   <ChatArea
     session={currentSession}
     {messages}
-    {isLoading}
+    isLoading={isCurrentSessionLoading}
     {isSidebarOpen}
     onToggleSidebar={() => isSidebarOpen = !isSidebarOpen}
     onSendMessage={handleSendMessage}

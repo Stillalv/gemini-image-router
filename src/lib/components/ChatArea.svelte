@@ -78,7 +78,7 @@
 
     // Parse slash commands like /multi, /batch, /ratio, /model
     const parsed = parseSlashCommand(prompt);
-    let targetPrompt = parsed.cleanPrompt || prompt.trim();
+    let targetPrompt = parsed.commandId ? parsed.cleanPrompt.trim() : prompt.trim();
     let targetRatio = selectedRatio;
     let targetModel = selectedModel;
     let count: number | undefined = parsed.count;
@@ -90,6 +90,11 @@
       targetRatio = parsed.param;
     } else if (parsed.commandId === 'model' && parsed.param) {
       targetModel = parsed.param as any;
+    }
+
+    // If prompt is empty after extracting command and no attachments exist, do not send
+    if (!targetPrompt && attachments.length === 0) {
+      return;
     }
 
     const currentAttachments = [...attachments];

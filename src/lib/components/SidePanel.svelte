@@ -18,6 +18,7 @@
   interface Props {
     sessions: Session[];
     currentSessionId: string | null;
+    loadingSessionIds?: string[];
     isOpen: boolean;
     onToggle: () => void;
     onSelectSession: (id: string) => void;
@@ -31,6 +32,7 @@
   let {
     sessions = [],
     currentSessionId,
+    loadingSessionIds = [],
     isOpen = true,
     onToggle,
     onSelectSession,
@@ -100,6 +102,13 @@
               <Sparkles class="w-3.5 h-3.5 flex-shrink-0 text-neutral-500 dark:text-neutral-400 transition-transform duration-150 group-hover:scale-110" />
             {/if}
             <span class="truncate">{sess.title}</span>
+
+            {#if loadingSessionIds.includes(sess.id)}
+              <span class="relative flex h-2 w-2 ml-1 flex-shrink-0" title="Sedang memproses...">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+            {/if}
           </div>
 
           <button
