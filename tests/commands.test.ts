@@ -52,7 +52,7 @@ describe('Slash Command System & Parser', () => {
   });
 
   describe('getAvailableCommands (Mode Filtering)', () => {
-    it('should hide /batch when hasAttachments is false (Generate mode)', () => {
+    it('should hide /batch when isEditMode is false (Generate mode without attachments)', () => {
       const available = getAvailableCommands(false);
       const batchCmd = available.find(c => c.id === 'batch');
       const multiCmd = available.find(c => c.id === 'multi');
@@ -63,7 +63,7 @@ describe('Slash Command System & Parser', () => {
       expect(ratioCmd).toBeDefined();
     });
 
-    it('should show /batch when hasAttachments is true (Edit mode)', () => {
+    it('should show /batch when isEditMode is true (Edit session mode or with attachments)', () => {
       const available = getAvailableCommands(true);
       const batchCmd = available.find(c => c.id === 'batch');
       const multiCmd = available.find(c => c.id === 'multi');

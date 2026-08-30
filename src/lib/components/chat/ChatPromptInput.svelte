@@ -34,8 +34,9 @@
   let selectedCmdIndex = $state(0);
 
   // Slash commands popover state
+  let isEditMode = $derived(sessionType === 'edit' || attachments.length > 0);
   let showCommandPopover = $derived(prompt.startsWith('/') && !prompt.includes(' '));
-  let availableCommands = $derived(getAvailableCommands(attachments.length > 0, prompt));
+  let availableCommands = $derived(getAvailableCommands(isEditMode, prompt));
 
   // Parsed command preview badge
   let parsedCommand = $derived(parseSlashCommand(prompt));

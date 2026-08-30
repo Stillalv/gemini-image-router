@@ -146,13 +146,13 @@ export function parseSlashCommand(input: string): ParsedCommandResult {
 }
 
 /**
- * Returns available commands filtered by mode (hasAttachments) and search query.
+ * Returns available commands filtered by mode (isEditMode) and search query.
  */
-export function getAvailableCommands(hasAttachments: boolean, query = ''): SlashCommand[] {
+export function getAvailableCommands(isEditMode: boolean, query = ''): SlashCommand[] {
   const cleanQuery = query.startsWith('/') ? query.slice(1).toLowerCase().trim() : query.toLowerCase().trim();
 
   return SLASH_COMMANDS.filter(cmd => {
-    const isAllowed = hasAttachments ? cmd.allowInEdit : cmd.allowInGenerate;
+    const isAllowed = isEditMode ? cmd.allowInEdit : cmd.allowInGenerate;
     if (!isAllowed) return false;
     if (!cleanQuery) return true;
 
