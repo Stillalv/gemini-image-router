@@ -73,11 +73,19 @@ export async function runEditTask(
     console.log(`[EDIT:${taskId}] Navigating to Gemini App (${tempFilePaths.length} attachment(s))...`);
     await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(1000);
+
+    if (page.url().includes('google.com/sorry')) {
+      throw new Error('Google mendeteksi aktivitas otomatis (google.com/sorry captcha). Silakan buka terminal dan jalankan "bun run login" untuk verifikasi.');
+    }
+    if (page.url().includes('accounts.google.com')) {
+      throw new Error('Sesi Google telah kedaluwarsa. Silakan buka terminal dan jalankan "bun run login" untuk login ulang.');
+    }
+
     await page.keyboard.press('Escape').catch(() => {});
 
     // 1. Wait for editor box to be ready
     const input = page.locator('rich-textarea div[contenteditable="true"], div.ql-editor[contenteditable="true"], div[contenteditable="true"][role="textbox"]').first();
-    await input.waitFor({ state: 'visible', timeout: 35000 });
+    await input.waitFor({ state: 'visible', timeout: 25000 });
 
     // 2. Switch model if specified
     if (modelId) {

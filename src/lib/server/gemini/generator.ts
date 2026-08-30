@@ -18,6 +18,14 @@ export async function runGenerateTask(rawPrompt: string, aspectRatio?: string, m
     console.log(`[GEN:${taskId}] Navigating to Gemini App...`);
     await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(800);
+
+    if (page.url().includes('google.com/sorry')) {
+      throw new Error('Google mendeteksi aktivitas otomatis (google.com/sorry captcha). Silakan buka terminal dan jalankan "bun run login" untuk verifikasi.');
+    }
+    if (page.url().includes('accounts.google.com')) {
+      throw new Error('Sesi Google telah kedaluwarsa. Silakan buka terminal dan jalankan "bun run login" untuk login ulang.');
+    }
+
     await page.keyboard.press('Escape').catch(() => {});
 
     // Switch model if specified

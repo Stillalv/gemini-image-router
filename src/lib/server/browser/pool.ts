@@ -20,7 +20,14 @@ export async function getBrowserContext(): Promise<BrowserContext> {
     headless: true,
     channel: 'chrome',
     viewport: { width: 1280, height: 900 },
-    args: ['--disable-blink-features=AutomationControlled', '--no-sandbox']
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-infobars',
+      '--disable-dev-shm-usage',
+      '--no-first-run'
+    ]
   };
 
   if (hasStorage) {
