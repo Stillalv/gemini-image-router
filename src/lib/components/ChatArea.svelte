@@ -153,7 +153,19 @@
 
   async function handleApplyAreaEdit(imageUrl: string, editPrompt: string) {
     if (isLoading) return;
-    await onSendMessage(editPrompt, [{ id: crypto.randomUUID(), name: 'area_edit.png', dataUrl: imageUrl }], selectedRatio, selectedModel);
+    let dataUrl = imageUrl;
+    if (!imageUrl.startsWith('data:') && !imageUrl.startsWith('/output/') && !imageUrl.startsWith('output/')) {
+      try {
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve((e.target?.result as string) || imageUrl);
+          reader.readAsDataURL(blob);
+        });
+      } catch {}
+    }
+    await onSendMessage(editPrompt, [{ id: crypto.randomUUID(), name: 'area_edit.png', dataUrl }], selectedRatio, selectedModel);
   }
 
   function getOriginalImageUrlsForMessage(index: number): string[] {
@@ -271,4 +283,5 @@
   height={activeModalImage?.height}
   prompt={activeModalImage?.prompt}
   onClose={() => (activeModalImage = null)}
+  onApplyEdit={handleApplyAreaEdit}
 />
