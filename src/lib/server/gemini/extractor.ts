@@ -175,6 +175,16 @@ export async function extractGeneratedImages(
         console.log(`[EXTRACTOR] Generation completed and captured ${interceptedBuffers.length} network image buffer(s)!`);
         break;
       }
+
+      // Early exit if Gemini has completely finished its turn (no active generation/placeholder) without producing images
+      if (!status.isGenerating && !status.isPlaceholderActive && elapsed >= 14) {
+        if (candidates.length === 0 && interceptedBuffers.length === 0) {
+          if (status.text) {
+            console.warn(`[EXTRACTOR] Gemini finished turn without generating image: "${status.text.slice(0, 100)}..."`);
+            throw new Error(`Gemini menyelesaikan respon berupa teks: "${status.text.slice(0, 120)}"`);
+          }
+        }
+      }
     }
 
     // 2. Process extracted or intercepted images (NEVER use loc.screenshot)
