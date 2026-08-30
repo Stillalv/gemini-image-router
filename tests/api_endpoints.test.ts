@@ -379,6 +379,21 @@ describe('Comprehensive REST API Endpoint Suite', () => {
       expect(data.ok).toBe(false);
     });
 
+    it('POST /api/generate should reject invalid count parameter (> 4)', async () => {
+      const res = await fetch(`${BASE_URL}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie
+        },
+        body: JSON.stringify({ prompt: 'Test prompt', count: 10 })
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.ok).toBe(false);
+    });
+
     it('POST /api/edit should reject requests missing the image attachment', async () => {
       const res = await fetch(`${BASE_URL}/api/edit`, {
         method: 'POST',
@@ -406,6 +421,27 @@ describe('Comprehensive REST API Endpoint Suite', () => {
         body: JSON.stringify({
           prompt: 'Edit something',
           image: fakeDataUrl
+        })
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.ok).toBe(false);
+      expect(data.error).toContain('MIME type');
+    });
+
+    it('POST /api/edit should reject non-image MIME types in images array', async () => {
+      const fakeDataUrl = 'data:text/plain;base64,SGVsbG8=';
+      const res = await fetch(`${BASE_URL}/api/edit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: sessionCookie
+        },
+        body: JSON.stringify({
+          prompt: 'Edit something',
+          images: [fakeDataUrl],
+          mode: 'batch'
         })
       });
 

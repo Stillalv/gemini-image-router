@@ -7,8 +7,9 @@
   import ImageModal from './ImageModal.svelte';
   import ChatHeader from './chat/ChatHeader.svelte';
   import ChatPromptInput from './chat/ChatPromptInput.svelte';
+  import { parseSlashCommand } from '$lib/commands';
   import { t } from '$lib/i18n';
-  import type { Session, Message, GeminiModelId } from '$lib/types';
+  import type { Session, Message, GeminiModelId, AttachmentItem } from '$lib/types';
 
   interface Props {
     session: Session | null;
@@ -16,7 +17,13 @@
     isLoading: boolean;
     isSidebarOpen: boolean;
     onToggleSidebar: () => void;
-    onSendMessage: (prompt: string, attachmentBase64?: string, aspectRatio?: string, model?: GeminiModelId) => Promise<void>;
+    onSendMessage: (
+      prompt: string,
+      attachments?: AttachmentItem[],
+      aspectRatio?: string,
+      model?: GeminiModelId,
+      options?: { count?: number; mode?: 'composite' | 'batch' }
+    ) => Promise<void>;
   }
 
   let {
@@ -29,8 +36,7 @@
   }: Props = $props();
 
   let prompt = $state('');
-  let attachedBase64: string | null = $state(null);
-  let attachedName = $state('');
+  let attachments: AttachmentItem[] = $state([]);
   let selectedRatio = $state('Auto');
   let selectedModel: GeminiModelId = $state('3.7-flash');
 
@@ -68,40 +74,57 @@
   });
 
   async function handleSend() {
-    if ((!prompt.trim() && !attachedBase64) || isLoading) return;
-    const text = prompt.trim();
-    const attachment = attachedBase64 || undefined;
+    if ((!prompt.trim() && attachments.length === 0) || isLoading) return;
+
+    // Parse slash commands like /multi, /batch, /ratio, /model
+    const parsed = parseSlashCommand(prompt);
+    let targetPrompt = parsed.cleanPrompt || prompt.trim();
+    let targetRatio = selectedRatio;
+    let targetModel = selectedModel;
+    let count: number | undefined = parsed.count;
+    let mode: 'composite' | 'batch' = 'composite';
+
+    if (parsed.commandId === 'batch') {
+      mode = 'batch';
+    } else if (parsed.commandId === 'ratio' && parsed.param) {
+      targetRatio = parsed.param;
+    } else if (parsed.commandId === 'model' && parsed.param) {
+      targetModel = parsed.param as any;
+    }
+
+    const currentAttachments = [...attachments];
     prompt = '';
-    attachedBase64 = null;
-    attachedName = '';
-    await onSendMessage(text, attachment, selectedRatio, selectedModel);
+    attachments = [];
+
+    await onSendMessage(targetPrompt, currentAttachments, targetRatio, targetModel, { count, mode });
   }
 
   async function handleRevert(revertPrompt: string, attachmentUrl?: string | null) {
     prompt = revertPrompt;
     if (attachmentUrl) {
       if (attachmentUrl.startsWith('data:')) {
-        attachedBase64 = attachmentUrl;
+        attachments = [{ id: crypto.randomUUID(), name: 'reverted.png', dataUrl: attachmentUrl }];
       } else {
         try {
           const res = await fetch(attachmentUrl);
           const blob = await res.blob();
           const reader = new FileReader();
           reader.onload = (e) => {
-            if (typeof e.target?.result === 'string') attachedBase64 = e.target.result;
+            if (typeof e.target?.result === 'string') {
+              attachments = [{ id: crypto.randomUUID(), name: attachmentUrl.split('/').pop() || 'reverted.png', dataUrl: e.target.result }];
+            }
           };
           reader.readAsDataURL(blob);
         } catch {
-          attachedBase64 = attachmentUrl;
+          attachments = [{ id: crypto.randomUUID(), name: 'attachment.png', dataUrl: attachmentUrl }];
         }
       }
-      attachedName = attachmentUrl.split('/').pop() || 'lampiran.png';
     }
   }
 
   async function handleApplyAreaEdit(imageUrl: string, editPrompt: string) {
     if (isLoading) return;
-    await onSendMessage(editPrompt, imageUrl, selectedRatio, selectedModel);
+    await onSendMessage(editPrompt, [{ id: crypto.randomUUID(), name: 'area_edit.png', dataUrl: imageUrl }], selectedRatio, selectedModel);
   }
 
   function getOriginalImageUrlForMessage(index: number): string | null {
@@ -190,8 +213,7 @@
 
     <ChatPromptInput
       bind:prompt
-      bind:attachedBase64
-      bind:attachedName
+      bind:attachments
       bind:selectedRatio
       bind:selectedModel
       sessionType={session?.type}
@@ -199,17 +221,14 @@
       onSend={handleSend}
     />
   </div>
-
-  {#if activeModalImage}
-    <ImageModal
-      isOpen={!!activeModalImage}
-      imageUrl={activeModalImage.imageUrl}
-      originalImageUrl={activeModalImage.originalImageUrl}
-      width={activeModalImage.width}
-      height={activeModalImage.height}
-      prompt={activeModalImage.prompt}
-      onClose={() => (activeModalImage = null)}
-      onApplyEdit={handleApplyAreaEdit}
-    />
-  {/if}
 </div>
+
+<ImageModal
+  isOpen={Boolean(activeModalImage)}
+  imageUrl={activeModalImage?.imageUrl || ''}
+  originalImageUrl={activeModalImage?.originalImageUrl}
+  width={activeModalImage?.width}
+  height={activeModalImage?.height}
+  prompt={activeModalImage?.prompt}
+  onClose={() => (activeModalImage = null)}
+/>

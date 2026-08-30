@@ -3,6 +3,20 @@ import { editSchema } from '$lib/server/security/validator';
 import { runEditTask } from '$lib/server/gemini/editor';
 import { sessionRepo, messageRepo, usageRepo } from '$lib/server/db/repository';
 import { authenticateRequest, checkQuotaAndCapability, recordExecutionLog } from '$lib/server/security/quota-guard';
+import type { GeneratedImage } from '$lib/types';
+import fs from 'node:fs';
+import path from 'node:path';
+
+function saveAttachmentPreview(imageInput: string): string {
+  if (imageInput.startsWith('data:image/')) {
+    const attachFile = `attach_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.png`;
+    const fullPath = path.join(path.resolve('output'), attachFile);
+    const b64 = imageInput.replace(/^data:image\/\w+;base64,/, '');
+    fs.writeFileSync(fullPath, Buffer.from(b64, 'base64'));
+    return `/output/${attachFile}`;
+  }
+  return imageInput;
+}
 
 export const POST: RequestHandler = async ({ request }) => {
   const startTime = Date.now();
@@ -19,29 +33,27 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { prompt, image, session_id, aspect_ratio, model } = parsed.data;
+    const { prompt, image, images: multiImages, mode = 'composite', session_id, aspect_ratio, model, count = 1 } = parsed.data;
     validatedPrompt = prompt;
     validatedSessionId = session_id;
 
+    // Consolidate input images array
+    const imageList: string[] = multiImages && multiImages.length > 0 ? multiImages : [image!];
+
     // 2. Authenticate and enforce quota with model cost multiplier
     authContext = await authenticateRequest(request, { required: false });
-    const { creditCost } = await checkQuotaAndCapability(authContext, 'edit', model);
+    const { creditCost: singleCost } = await checkQuotaAndCapability(authContext, 'edit', model);
 
-    // 3. Save attachment preview image cleanly
-    let savedAttachmentUrl: string | null = null;
-    if (image.startsWith('data:image/')) {
-      const fs = await import('node:fs');
-      const path = await import('node:path');
-      const attachFile = `attach_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.png`;
-      const fullPath = path.join(path.resolve('output'), attachFile);
-      const b64 = image.replace(/^data:image\/\w+;base64,/, '');
-      fs.writeFileSync(fullPath, Buffer.from(b64, 'base64'));
-      savedAttachmentUrl = `/output/${attachFile}`;
-    } else if (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/output/')) {
-      savedAttachmentUrl = image;
-    }
+    // If batch mode: cost is singleCost * imageList.length
+    // If composite mode with multi variations: singleCost * count
+    const totalCreditCost = mode === 'batch'
+      ? singleCost * imageList.length
+      : singleCost * count;
 
-    // 4. Save user message with attachment preview
+    // 3. Save attachment preview URLs cleanly
+    const savedAttachmentUrls = imageList.map(saveAttachmentPreview);
+
+    // 4. Save user message with attachment previews
     if (session_id) {
       const sess = await sessionRepo.get(session_id);
       if (sess) {
@@ -49,13 +61,44 @@ export const POST: RequestHandler = async ({ request }) => {
           session_id,
           role: 'user',
           content: prompt,
-          attachment_url: savedAttachmentUrl
+          attachment_url: savedAttachmentUrls[0] || null,
+          attachment_urls: savedAttachmentUrls
         });
       }
     }
 
-    // 5. Run edit workflow
-    const images = await runEditTask(prompt, image, aspect_ratio, model);
+    // 5. Run edit workflow (Batch vs Composite vs Multi-Variations)
+    let images: GeneratedImage[] = [];
+
+    if (mode === 'batch' && imageList.length > 1) {
+      // BATCH MODE: Process each image independently in parallel
+      const batchPromises = imageList.map((img) =>
+        runEditTask(prompt, img, aspect_ratio, model).catch((err) => {
+          console.error('[BATCH-EDIT] Subtask failed:', err?.message);
+          return [] as GeneratedImage[];
+        })
+      );
+      const batchResults = await Promise.all(batchPromises);
+      images = batchResults.flat();
+    } else if (count > 1) {
+      // MULTI VARIATIONS: Run multiple composite turns in parallel
+      const variationPromises = Array.from({ length: count }, () =>
+        runEditTask(prompt, imageList, aspect_ratio, model).catch((err) => {
+          console.error('[MULTI-EDIT] Variation failed:', err?.message);
+          return [] as GeneratedImage[];
+        })
+      );
+      const varResults = await Promise.all(variationPromises);
+      images = varResults.flat();
+    } else {
+      // SINGLE / COMPOSITE MODE: All attachments in 1 turn
+      images = await runEditTask(prompt, imageList, aspect_ratio, model);
+    }
+
+    if (images.length === 0) {
+      throw new Error('Gagal menghasilkan gambar hasil edit.');
+    }
+
     const durationMs = Date.now() - startTime;
 
     // 6. Persist assistant chat message
@@ -67,6 +110,8 @@ export const POST: RequestHandler = async ({ request }) => {
           role: 'assistant',
           content: `Edited: ${prompt}`,
           image_url: images[0].file,
+          image_urls: images.map((i) => i.file),
+          images,
           width: images[0].width,
           height: images[0].height
         });
@@ -80,7 +125,7 @@ export const POST: RequestHandler = async ({ request }) => {
       prompt,
       durationMs,
       success: true,
-      creditCost,
+      creditCost: totalCreditCost,
       imageCount: images.length,
       outputUrls: images.map((i) => i.file),
       sessionId: session_id
@@ -92,6 +137,7 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({
       ok: true,
       mode: 'edit',
+      editMode: mode,
       prompt,
       images,
       count: images.length,
@@ -114,12 +160,6 @@ export const POST: RequestHandler = async ({ request }) => {
       }).catch(() => {});
     }
 
-    return json(
-      {
-        ok: false,
-        error: err.message || 'Gagal mengedit gambar'
-      },
-      { status: err.message?.includes('kuota') ? 429 : 500 }
-    );
+    return json({ ok: false, error: err.message || 'Internal server error' }, { status: 500 });
   }
 };

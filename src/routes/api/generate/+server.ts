@@ -3,6 +3,7 @@ import { generateSchema } from '$lib/server/security/validator';
 import { runGenerateTask } from '$lib/server/gemini/generator';
 import { sessionRepo, messageRepo, usageRepo } from '$lib/server/db/repository';
 import { authenticateRequest, checkQuotaAndCapability, recordExecutionLog } from '$lib/server/security/quota-guard';
+import type { GeneratedImage } from '$lib/types';
 
 export const POST: RequestHandler = async ({ request }) => {
   const startTime = Date.now();
@@ -19,13 +20,14 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { prompt, session_id, aspect_ratio, model } = parsed.data;
+    const { prompt, session_id, aspect_ratio, model, count = 1 } = parsed.data;
     validatedPrompt = prompt;
     validatedSessionId = session_id;
 
     // 2. Authenticate and enforce quota with model cost multiplier
     authContext = await authenticateRequest(request, { required: false });
-    const { creditCost } = await checkQuotaAndCapability(authContext, 'generate', model);
+    const { creditCost: singleCost } = await checkQuotaAndCapability(authContext, 'generate', model);
+    const totalCreditCost = singleCost * count;
 
     // 3. Persist user chat message if session exists
     if (session_id) {
@@ -39,19 +41,39 @@ export const POST: RequestHandler = async ({ request }) => {
       }
     }
 
-    // 4. Execute generation workflow
-    const images = await runGenerateTask(prompt, aspect_ratio, model);
+    // 4. Execute generation workflow (Single or Parallel Multi-Variations)
+    let images: GeneratedImage[] = [];
+
+    if (count === 1) {
+      images = await runGenerateTask(prompt, aspect_ratio, model);
+    } else {
+      const taskPromises = Array.from({ length: count }, () =>
+        runGenerateTask(prompt, aspect_ratio, model).catch((err) => {
+          console.error('[Multi-Gen] Subtask failed:', err?.message);
+          return [] as GeneratedImage[];
+        })
+      );
+      const results = await Promise.all(taskPromises);
+      images = results.flat();
+
+      if (images.length === 0) {
+        throw new Error('Gagal menghasilkan variasi gambar.');
+      }
+    }
+
     const durationMs = Date.now() - startTime;
 
-    // 5. Persist assistant chat message
+    // 5. Persist assistant chat message with all generated images
     if (session_id) {
       const sess = await sessionRepo.get(session_id);
       if (sess && images[0]) {
         await messageRepo.create({
           session_id,
           role: 'assistant',
-          content: `Generated ${images.length} image(s)`,
+          content: `Generated ${images.length} image variation(s)`,
           image_url: images[0].file,
+          image_urls: images.map((i) => i.file),
+          images,
           width: images[0].width,
           height: images[0].height
         });
@@ -65,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
       prompt,
       durationMs,
       success: true,
-      creditCost,
+      creditCost: totalCreditCost,
       imageCount: images.length,
       outputUrls: images.map((i) => i.file),
       sessionId: session_id
@@ -99,12 +121,6 @@ export const POST: RequestHandler = async ({ request }) => {
       }).catch(() => {});
     }
 
-    return json(
-      {
-        ok: false,
-        error: err.message || 'Gagal menghasilkan gambar'
-      },
-      { status: err.message?.includes('kuota') ? 429 : 500 }
-    );
+    return json({ ok: false, error: err.message || 'Internal server error' }, { status: 500 });
   }
 };

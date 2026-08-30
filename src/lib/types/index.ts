@@ -136,13 +136,23 @@ export interface Session {
   message_count?: number;
 }
 
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  dataUrl: string;
+  size?: number;
+}
+
 export interface Message {
   id: string;
   session_id: string;
   role: 'user' | 'assistant';
   content: string;
   image_url?: string | null;
+  image_urls?: string[];
+  images?: GeneratedImage[];
   attachment_url?: string | null;
+  attachment_urls?: string[];
   width?: number | null;
   height?: number | null;
   created_at: number;
@@ -150,7 +160,8 @@ export interface Message {
 
 export interface GeneratedImage {
   file: string;
-  localPath: string;
+  url?: string;
+  localPath?: string;
   width: number;
   height: number;
   alt: string;

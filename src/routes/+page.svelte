@@ -8,7 +8,7 @@
   import AccountModal from '$lib/components/AccountModal.svelte';
   import { account } from '$lib/stores/account';
   import { t } from '$lib/i18n';
-  import type { Session, Message, SessionType, GeminiModelId } from '$lib/types';
+  import type { Session, Message, SessionType, GeminiModelId, AttachmentItem } from '$lib/types';
 
   let sessions: Session[] = $state([]);
   let currentSessionId: string | null = $state(null);
@@ -81,23 +81,37 @@
     } catch {}
   }
 
-  async function handleSendMessage(prompt: string, attachmentBase64?: string | null, aspectRatio?: string, model?: GeminiModelId) {
+  async function handleSendMessage(
+    prompt: string,
+    attachments?: AttachmentItem[] | string | null,
+    aspectRatio?: string,
+    model?: GeminiModelId,
+    options?: { count?: number; mode?: 'composite' | 'batch' }
+  ) {
+    const rawAttachments = Array.isArray(attachments)
+      ? attachments.map(a => a.dataUrl)
+      : typeof attachments === 'string'
+        ? [attachments]
+        : [];
+
+    const hasAttachments = rawAttachments.length > 0;
+
     if (!currentSessionId) {
-      await createSession(attachmentBase64 ? 'edit' : 'generate');
+      await createSession(hasAttachments ? 'edit' : 'generate');
     }
 
     const activeId = currentSessionId!;
-    const isEdit = Boolean(attachmentBase64) || currentSession?.type === 'edit';
+    const isEdit = hasAttachments || currentSession?.type === 'edit';
 
-    // If edit mode and no direct attachment was passed, fallback to last generated/attached image in session
-    let imageToEdit = attachmentBase64;
-    if (isEdit && !imageToEdit && messages.length > 0) {
+    // If edit mode and no direct attachments passed, fallback to last generated/attached image in session
+    let imagesToEdit = [...rawAttachments];
+    if (isEdit && imagesToEdit.length === 0 && messages.length > 0) {
       for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].image_url) {
-          imageToEdit = messages[i].image_url;
+          imagesToEdit = [messages[i].image_url!];
           break;
         } else if (messages[i].attachment_url) {
-          imageToEdit = messages[i].attachment_url;
+          imagesToEdit = [messages[i].attachment_url!];
           break;
         }
       }
@@ -108,17 +122,33 @@
       session_id: activeId,
       role: 'user',
       content: prompt,
-      attachment_url: imageToEdit || null,
+      attachment_url: imagesToEdit[0] || null,
+      attachment_urls: imagesToEdit.length > 1 ? imagesToEdit : undefined,
       created_at: Date.now()
     };
     messages = [...messages, tempUserMsg];
     isLoading = true;
 
     try {
-      const endpoint = (isEdit && imageToEdit) ? '/api/edit' : '/api/generate';
-      const payload = (isEdit && imageToEdit)
-        ? { prompt, image: imageToEdit, session_id: activeId, aspect_ratio: aspectRatio, model }
-        : { prompt, session_id: activeId, aspect_ratio: aspectRatio, model };
+      const endpoint = (isEdit && imagesToEdit.length > 0) ? '/api/edit' : '/api/generate';
+      const payload = (isEdit && imagesToEdit.length > 0)
+        ? {
+            prompt,
+            image: imagesToEdit[0],
+            images: imagesToEdit.length > 1 ? imagesToEdit : undefined,
+            mode: options?.mode || 'composite',
+            count: options?.count,
+            session_id: activeId,
+            aspect_ratio: aspectRatio,
+            model
+          }
+        : {
+            prompt,
+            count: options?.count || 1,
+            session_id: activeId,
+            aspect_ratio: aspectRatio,
+            model
+          };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -131,7 +161,7 @@
         if (data.quota) {
           account.setQuota(data.quota);
         } else {
-          account.incrementUsage(1);
+          account.incrementUsage(data.images.length || 1);
         }
         await selectSession(activeId);
         await loadSessions();

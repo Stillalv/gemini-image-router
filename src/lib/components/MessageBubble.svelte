@@ -32,6 +32,26 @@
 
   let isCopied = $state(false);
 
+  // Derived list of assistant generated images
+  let generatedImageList = $derived(
+    message.images && message.images.length > 0
+      ? message.images.map(img => ({ url: img.file, width: img.width, height: img.height }))
+      : message.image_urls && message.image_urls.length > 0
+        ? message.image_urls.map(url => ({ url, width: message.width, height: message.height }))
+        : message.image_url
+          ? [{ url: message.image_url, width: message.width, height: message.height }]
+          : []
+  );
+
+  // Derived list of user attached images
+  let attachedImageList = $derived(
+    message.attachment_urls && message.attachment_urls.length > 0
+      ? message.attachment_urls
+      : message.attachment_url
+        ? [message.attachment_url]
+        : []
+  );
+
   async function handleCopyText() {
     if (!message.content) return;
     try {
@@ -40,9 +60,7 @@
       setTimeout(() => {
         isCopied = false;
       }, 2000);
-    } catch {
-      // Fallback
-    }
+    } catch {}
   }
 </script>
 
@@ -93,25 +111,24 @@
   <!-- Content Box -->
   {#if message.role === 'user'}
     <div class="max-w-xl px-4 py-3 rounded-2xl rounded-tr-xs text-sm leading-relaxed whitespace-pre-wrap break-words bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-xs transition-shadow">
-      {#if message.attachment_url}
-        <!-- Compact Attachment Preview Pill with Pop-In -->
-        <div
-          class="flex items-center gap-2.5 mb-2.5 p-1.5 rounded-xl border w-fit {message.role === 'user' ? 'bg-white/10 dark:bg-neutral-100 border-white/15 dark:border-neutral-200 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-[#202023] border-neutral-200 dark:border-[#333338]'}"
-          in:scale={{ duration: 220, start: 0.9, easing: cubicOut }}
-        >
-          <img
-            src={message.attachment_url}
-            alt="Attachment thumbnail"
-            class="w-10 h-10 object-cover rounded-lg border transition-transform duration-200 hover:scale-105 {message.role === 'user' ? 'border-white/20 dark:border-neutral-300' : 'border-neutral-200 dark:border-neutral-700'}"
-          />
-          <div class="flex flex-col pr-2 text-left">
-            <span class="text-xs font-medium truncate max-w-[160px]">
-              {message.attachment_url.split('/').pop()?.slice(0, 20) || 'attachment.png'}
-            </span>
-            <span class="text-[10px] opacity-70">
-              {$t('chat.attachedImage')}
-            </span>
-          </div>
+      {#if attachedImageList.length > 0}
+        <!-- Multi-Attachment Preview Chips -->
+        <div class="flex flex-wrap gap-2 mb-2.5">
+          {#each attachedImageList as attUrl}
+            <div
+              class="flex items-center gap-2 p-1.5 rounded-xl border w-fit {message.role === 'user' ? 'bg-white/10 dark:bg-neutral-100 border-white/15 dark:border-neutral-200 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-[#202023] border-neutral-200 dark:border-[#333338]'}"
+              in:scale={{ duration: 200, start: 0.9, easing: cubicOut }}
+            >
+              <img
+                src={attUrl}
+                alt="Attachment thumbnail"
+                class="w-9 h-9 object-cover rounded-lg border transition-transform duration-200 hover:scale-105 {message.role === 'user' ? 'border-white/20 dark:border-neutral-300' : 'border-neutral-200 dark:border-neutral-700'}"
+              />
+              <span class="text-xs font-medium truncate max-w-[120px]">
+                {attUrl.split('/').pop()?.slice(0, 16) || 'attachment.png'}
+              </span>
+            </div>
+          {/each}
         </div>
       {/if}
       <div>{message.content}</div>
@@ -123,17 +140,34 @@
       </div>
     {/if}
 
-    {#if message.image_url}
+    <!-- Single or Multi-Grid Image Output -->
+    {#if generatedImageList.length === 1}
       <div class="pt-1 w-fit max-w-xl">
         <ImageCard
-          imageUrl={message.image_url}
+          imageUrl={generatedImageList[0].url}
           originalImageUrl={sessionType === 'edit' ? originalImageUrl : null}
-          width={message.width}
-          height={message.height}
+          width={generatedImageList[0].width}
+          height={generatedImageList[0].height}
           prompt={message.content}
           {onApplyEdit}
           {onOpenModal}
         />
+      </div>
+    {:else if generatedImageList.length > 1}
+      <div class="pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-3xl">
+        {#each generatedImageList as imgItem, i}
+          <div class="w-full">
+            <ImageCard
+              imageUrl={imgItem.url}
+              originalImageUrl={sessionType === 'edit' ? originalImageUrl : null}
+              width={imgItem.width}
+              height={imgItem.height}
+              prompt={`${message.content} (#${i + 1})`}
+              {onApplyEdit}
+              {onOpenModal}
+            />
+          </div>
+        {/each}
       </div>
     {/if}
   {/if}

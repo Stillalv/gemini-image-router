@@ -41,20 +41,36 @@ async function resolveAttachment(imageInput: string): Promise<string> {
   throw new Error('Format attachment tidak valid (gunakan Base64, URL, atau file path).');
 }
 
-export function formatEditPrompt(rawPrompt: string, aspectRatio?: string): string {
+export function formatEditPrompt(rawPrompt: string, aspectRatio?: string, isMultiAttachment = false): string {
   const p = rawPrompt.trim();
   const ratioSpec = aspectRatio && aspectRatio !== 'Auto' ? ` dalam rasio aspek ${aspectRatio} (${aspectRatio} aspect ratio)` : '';
-  return `Edit dan modifikasi gambar yang saya lampirkan ini secara visual: "${p}"${ratioSpec}. Buatkan gambar visual baru hasil modifikasinya sekarang juga (generate edited image).`;
+  const refText = isMultiAttachment
+    ? 'gambar-gambar yang saya lampirkan ini sebagai referensi visual'
+    : 'gambar yang saya lampirkan ini secara visual';
+
+  return `Edit dan modifikasi ${refText}: "${p}"${ratioSpec}. Buatkan gambar visual baru hasil modifikasinya sekarang juga (generate edited image).`;
 }
 
-export async function runEditTask(rawPrompt: string, imageInput: string, aspectRatio?: string, modelId?: string): Promise<GeneratedImage[]> {
-  const prompt = formatEditPrompt(rawPrompt, aspectRatio);
-  const tempFilePath = await resolveAttachment(imageInput);
+export async function runEditTask(
+  rawPrompt: string,
+  imageInput: string | string[],
+  aspectRatio?: string,
+  modelId?: string
+): Promise<GeneratedImage[]> {
+  const imageInputs = Array.isArray(imageInput) ? imageInput : [imageInput];
+  const prompt = formatEditPrompt(rawPrompt, aspectRatio, imageInputs.length > 1);
+
+  const tempFilePaths: string[] = [];
+  for (const img of imageInputs) {
+    const resolved = await resolveAttachment(img);
+    tempFilePaths.push(resolved);
+  }
+
   const page = await acquirePage();
   const taskId = Math.random().toString(36).slice(2, 7);
 
   try {
-    console.log(`[EDIT:${taskId}] Navigating to Gemini App...`);
+    console.log(`[EDIT:${taskId}] Navigating to Gemini App (${tempFilePaths.length} attachment(s))...`);
     await page.goto('https://gemini.google.com/app', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(800);
     await page.keyboard.press('Escape').catch(() => {});
@@ -76,8 +92,8 @@ export async function runEditTask(rawPrompt: string, imageInput: string, aspectR
 
     const fileInput = page.locator('input[type="file"]').first();
     if (await fileInput.count()) {
-      await fileInput.setInputFiles(tempFilePath);
-      await page.waitForTimeout(2500);
+      await fileInput.setInputFiles(tempFilePaths);
+      await page.waitForTimeout(2500 + tempFilePaths.length * 500);
     }
 
     const input = page.locator('rich-textarea div[contenteditable="true"], div.ql-editor[contenteditable="true"], div[role="textbox"]').first();
@@ -102,8 +118,10 @@ export async function runEditTask(rawPrompt: string, imageInput: string, aspectR
     return results;
   } finally {
     releasePage(page);
-    if (tempFilePath && tempFilePath.includes(TEMP_DIR) && fs.existsSync(tempFilePath)) {
-      try { fs.unlinkSync(tempFilePath); } catch {}
+    for (const tempPath of tempFilePaths) {
+      if (tempPath && tempPath.includes(TEMP_DIR) && fs.existsSync(tempPath)) {
+        try { fs.unlinkSync(tempPath); } catch {}
+      }
     }
   }
 }
