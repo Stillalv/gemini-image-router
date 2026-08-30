@@ -71,27 +71,28 @@ export const POST: RequestHandler = async ({ request }) => {
     let images: GeneratedImage[] = [];
 
     if (mode === 'batch' && imageList.length > 1) {
-      // BATCH MODE: Process each image independently in parallel with slight stagger to avoid Chrome profile contention
-      const batchPromises = imageList.map(async (img, idx) => {
-        if (idx > 0) await new Promise((r) => setTimeout(r, idx * 800));
-        return runEditTask(prompt, img, aspect_ratio, model).catch((err) => {
-          console.error(`[BATCH-EDIT:${idx + 1}] Subtask failed:`, err?.message);
-          return [] as GeneratedImage[];
-        });
-      });
-      const batchResults = await Promise.all(batchPromises);
-      images = batchResults.flat();
+      // BATCH MODE: Process each image sequentially 1 by 1 to guarantee 100% stability
+      for (let i = 0; i < imageList.length; i++) {
+        const img = imageList[i];
+        console.log(`[BATCH-EDIT] Processing image ${i + 1}/${imageList.length}...`);
+        try {
+          const res = await runEditTask(prompt, img, aspect_ratio, model);
+          images.push(...res);
+        } catch (err: any) {
+          console.error(`[BATCH-EDIT] Image ${i + 1} failed:`, err?.message);
+        }
+      }
     } else if (count > 1) {
-      // MULTI VARIATIONS: Run multiple composite turns in parallel with stagger
-      const variationPromises = Array.from({ length: count }, async (_, idx) => {
-        if (idx > 0) await new Promise((r) => setTimeout(r, idx * 800));
-        return runEditTask(prompt, imageList, aspect_ratio, model).catch((err) => {
-          console.error(`[MULTI-EDIT:${idx + 1}] Variation failed:`, err?.message);
-          return [] as GeneratedImage[];
-        });
-      });
-      const varResults = await Promise.all(variationPromises);
-      images = varResults.flat();
+      // MULTI VARIATIONS: Run sequentially 1 by 1
+      for (let i = 0; i < count; i++) {
+        console.log(`[MULTI-EDIT] Processing variation ${i + 1}/${count}...`);
+        try {
+          const res = await runEditTask(prompt, imageList, aspect_ratio, model);
+          images.push(...res);
+        } catch (err: any) {
+          console.error(`[MULTI-EDIT] Variation ${i + 1} failed:`, err?.message);
+        }
+      }
     } else {
       // SINGLE / COMPOSITE MODE: All attachments in 1 turn
       images = await runEditTask(prompt, imageList, aspect_ratio, model);

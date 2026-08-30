@@ -41,20 +41,21 @@ export const POST: RequestHandler = async ({ request }) => {
       }
     }
 
-    // 4. Execute generation workflow (Single or Parallel Multi-Variations)
+    // 4. Execute generation workflow (Single or Sequential Multi-Variations)
     let images: GeneratedImage[] = [];
 
     if (count === 1) {
       images = await runGenerateTask(prompt, aspect_ratio, model);
     } else {
-      const taskPromises = Array.from({ length: count }, () =>
-        runGenerateTask(prompt, aspect_ratio, model).catch((err) => {
-          console.error('[Multi-Gen] Subtask failed:', err?.message);
-          return [] as GeneratedImage[];
-        })
-      );
-      const results = await Promise.all(taskPromises);
-      images = results.flat();
+      for (let i = 0; i < count; i++) {
+        console.log(`[MULTI-GEN] Generating variation ${i + 1}/${count}...`);
+        try {
+          const res = await runGenerateTask(prompt, aspect_ratio, model);
+          images.push(...res);
+        } catch (err: any) {
+          console.error(`[MULTI-GEN] Variation ${i + 1} failed:`, err?.message);
+        }
+      }
 
       if (images.length === 0) {
         throw new Error('Gagal menghasilkan variasi gambar.');
