@@ -7,6 +7,8 @@
     "build": "bun --bun vite build",
     "preview": "bun --bun vite preview --port 8787",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "bun test",
+    "test:parallel": "bun test --parallel",
     "login": "bun run src/lib/server/browser/login.ts"
   },
   "dependencies": {

@@ -10,6 +10,8 @@ export const db = new Database(dbPath, { create: true });
 
 // Initialize database schema
 db.run('PRAGMA journal_mode = WAL;');
+db.run('PRAGMA synchronous = NORMAL;');
+db.run('PRAGMA busy_timeout = 5000;');
 db.run(`
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,

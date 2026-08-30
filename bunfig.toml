@@ -1,2 +1,7 @@
+[install]
+exact = false
+lockfile = true
+
 [test]
 preload = ["./tests/setup.ts"]
+timeout = 15000
