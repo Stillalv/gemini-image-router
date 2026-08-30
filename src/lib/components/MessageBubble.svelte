@@ -10,6 +10,7 @@
     message: Message;
     sessionType?: SessionType;
     originalImageUrl?: string | null;
+    originalImageUrls?: string[];
     onRevert?: (prompt: string, attachmentUrls?: string[] | string | null) => void;
     onApplyEdit?: (imageUrl: string, editPrompt: string) => void;
     onOpenModal?: (data: {
@@ -25,12 +26,20 @@
     message,
     sessionType = 'generate',
     originalImageUrl = null,
+    originalImageUrls = [],
     onRevert,
     onApplyEdit,
     onOpenModal
   }: Props = $props();
 
   let isCopied = $state(false);
+
+  function getOriginalForIndex(i: number): string | null {
+    if (originalImageUrls && originalImageUrls.length > 0) {
+      return originalImageUrls[i] || originalImageUrls[0] || null;
+    }
+    return originalImageUrl;
+  }
 
   // Derived list of assistant generated images
   let generatedImageList = $derived(
@@ -145,7 +154,7 @@
       <div class="pt-1 w-fit max-w-xl">
         <ImageCard
           imageUrl={generatedImageList[0].url}
-          originalImageUrl={sessionType === 'edit' ? originalImageUrl : null}
+          originalImageUrl={sessionType === 'edit' ? getOriginalForIndex(0) : null}
           width={generatedImageList[0].width}
           height={generatedImageList[0].height}
           prompt={message.content}
@@ -159,7 +168,7 @@
           <div class="w-full">
             <ImageCard
               imageUrl={imgItem.url}
-              originalImageUrl={sessionType === 'edit' ? originalImageUrl : null}
+              originalImageUrl={sessionType === 'edit' ? getOriginalForIndex(i) : null}
               width={imgItem.width}
               height={imgItem.height}
               prompt={`${message.content} (#${i + 1})`}

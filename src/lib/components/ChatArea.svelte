@@ -156,14 +156,23 @@
     await onSendMessage(editPrompt, [{ id: crypto.randomUUID(), name: 'area_edit.png', dataUrl: imageUrl }], selectedRatio, selectedModel);
   }
 
-  function getOriginalImageUrlForMessage(index: number): string | null {
-    if (session?.type !== 'edit') return null;
+  function getOriginalImageUrlsForMessage(index: number): string[] {
+    if (session?.type !== 'edit') return [];
     for (let i = index - 1; i >= 0; i--) {
-      if (messages[i].role === 'user' && messages[i].attachment_url) return messages[i].attachment_url || null;
-      if (messages[i].role === 'assistant' && messages[i].image_url) return messages[i].image_url || null;
+      if (messages[i].role === 'user') {
+        const urls = messages[i].attachment_urls || (messages[i].attachment_url ? [messages[i].attachment_url!] : []);
+        if (urls.length > 0) return urls;
+      }
+      if (messages[i].role === 'assistant') {
+        const urls = messages[i].images?.map(img => img.file) || messages[i].image_urls || (messages[i].image_url ? [messages[i].image_url!] : []);
+        if (urls.length > 0) return urls;
+      }
     }
-    const userWithAttachment = messages.find((m) => m.role === 'user' && m.attachment_url);
-    return userWithAttachment?.attachment_url || null;
+    const userWithAttachment = messages.find((m) => m.role === 'user' && (m.attachment_url || m.attachment_urls?.length));
+    if (userWithAttachment) {
+      return userWithAttachment.attachment_urls || (userWithAttachment.attachment_url ? [userWithAttachment.attachment_url!] : []);
+    }
+    return [];
   }
 </script>
 
@@ -192,7 +201,8 @@
           <MessageBubble
             message={msg}
             sessionType={session?.type}
-            originalImageUrl={msg.role === 'assistant' ? getOriginalImageUrlForMessage(index) : null}
+            originalImageUrl={msg.role === 'assistant' ? getOriginalImageUrlsForMessage(index)[0] || null : null}
+            originalImageUrls={msg.role === 'assistant' ? getOriginalImageUrlsForMessage(index) : []}
             onRevert={handleRevert}
             onApplyEdit={handleApplyAreaEdit}
             onOpenModal={(data) => (activeModalImage = data)}
