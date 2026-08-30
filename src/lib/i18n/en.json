@@ -121,65 +121,97 @@
     }
   },
   "docs": {
-    "title": "API Documentation",
-    "subtitle": "Text-to-Image, Image-to-Image & Session Management Endpoint Specifications",
-    "requestBody": "Request Body (JSON)",
+    "title": "API & Integration Documentation",
+    "subtitle": "Complete REST API Specifications, Request Parameters, Response Formats, and SDK Code Snippets",
+    "requestBody": "Request Parameters (JSON Body)",
+    "requestHeaders": "Request Headers",
+    "responseSuccess": "Successful Response Format (200 OK)",
+    "responseErrors": "Error Responses & HTTP Status Codes",
     "copy": "Copy",
     "copied": "Copied",
+    "downloadSpec": "Download OpenAPI JSON",
     "curlSnippet": "cURL Example",
     "pythonSnippet": "Python Example (requests)",
-    "nodeSnippet": "JavaScript / Node.js Example (fetch)",
+    "nodeSnippet": "JavaScript / Node.js (fetch)",
+    "n8nSnippet": "n8n / Antigravity Integration Example",
     "tabs": {
       "generate": "POST /api/generate",
       "edit": "POST /api/edit",
       "sessions": "CRUD /api/sessions",
-      "auth": "API Authentication",
+      "usage": "GET /api/account/usage",
+      "plan": "POST /api/account/plan",
+      "keys": "API Keys",
+      "status": "GET /api/status",
+      "openapi": "OpenAPI 3.0",
       "curl": "cURL",
-      "python": "Python",
+      "python": "Python (requests)",
       "javascript": "JavaScript / Node.js"
     },
     "generate": {
-      "title": "Text-to-Image Generation",
-      "desc": "Generate brand new high quality images from textual prompt descriptions using Google Gemini Imagen 3.",
-      "promptParam": "prompt (string, required) : Detailed description of the image to generate (max 2,000 chars)",
-      "sessionParam": "session_id (string, optional) : Session ID to group conversation history",
-      "aspectRatioParam": "aspect_ratio (string, optional) : Target aspect ratio (Auto, 1:1, 16:9, 9:16, 4:3, 3:4, 2:1, 1:2)",
-      "modelParam": "model (string, optional) : Gemini AI model selection (3.7-flash, 3.5-flash-lite, 3.1-pro, extended-thinking)"
+      "title": "Text-to-Image Generation (POST /api/generate)",
+      "desc": "Generate high-resolution images from natural language text descriptions using Google Gemini Imagen 3 engine.",
+      "authNote": "Authentication is optional for guest users (Free - 20 req/day). Include Authorization: Bearer <API_KEY> for account quota.",
+      "promptParam": "Detailed description of the image to create (maximum 2,000 characters).",
+      "sessionParam": "Session ID (e.g. sess_...) to persist this message turn in conversation history.",
+      "aspectRatioParam": "Target aspect ratio: '1:1' (Square), '16:9' (Landscape), '9:16' (Portrait/Story), '4:3', '3:4', '2:1', '1:2', or 'Auto'.",
+      "modelParam": "Gemini AI model to execute generation: '3.7-flash' (2x quota), '3.5-flash-lite' (1x quota), '3.1-pro' (3x quota), 'extended-thinking' (4x quota)."
     },
     "edit": {
-      "title": "Image-to-Image Editing",
-      "desc": "Edit or modify specific parts of existing images based on natural language instructions.",
-      "promptParam": "prompt (string, required) : Modification directives or regional editing instructions",
-      "imageParam": "image (string, required) : Input image in Base64 Data URL or public image URL",
-      "sessionParam": "session_id (string, optional) : Related session ID",
-      "aspectRatioParam": "aspect_ratio (string, optional) : Target aspect ratio for the edited output",
-      "modelParam": "model (string, optional) : Gemini AI model selection"
+      "title": "Image-to-Image Editing (POST /api/edit)",
+      "desc": "Modify, restyle, or replace elements in an attached image based on natural language instructions.",
+      "authNote": "Image editing capability requires plans with allowImageEditing enabled (such as Pro & Ultra).",
+      "promptParam": "Text instructions specifying what changes or additions should be made to the image.",
+      "imageParam": "Input image data in Base64 Data URL format ('data:image/png;base64,...') or public image URL.",
+      "sessionParam": "Session ID to continue editing within the existing image history chain.",
+      "aspectRatioParam": "New aspect ratio if resizing the output image.",
+      "modelParam": "Gemini AI model selection for processing the edit request."
     },
     "sessions": {
-      "title": "Sessions CRUD & Message History",
-      "desc": "All conversation sessions and message streams are stored locally in the SQLite database.",
-      "listTitle": "List Sessions",
-      "listDesc": "GET /api/sessions : Retrieve list of all user conversation sessions.",
-      "createTitle": "Create New Session",
-      "createDesc": "POST /api/sessions : Create a new session with type 'generate' or 'edit'.",
-      "detailTitle": "Session Details & Messages",
-      "detailDesc": "GET /api/sessions/:id : Retrieve full session details and all messages.",
-      "deleteTitle": "Delete Session",
-      "deleteDesc": "DELETE /api/sessions/:id : Permanently delete a session and all its messages."
+      "title": "Conversation Session Management (CRUD /api/sessions)",
+      "desc": "Manage chat history, user messages, and generated images with encrypted multi-tenant data isolation in MongoDB.",
+      "listTitle": "GET /api/sessions",
+      "listDesc": "Retrieve all active conversation sessions for the authenticated user or guest.",
+      "createTitle": "POST /api/sessions",
+      "createDesc": "Create a new conversation session with type 'generate' (Text-to-Image) or 'edit' (Image-to-Image).",
+      "detailTitle": "GET /api/sessions/:id",
+      "detailDesc": "Get full session metadata along with chronological messages and image attachments.",
+      "updateTitle": "PUT /api/sessions/:id",
+      "updateDesc": "Update the session title (body: { \"title\": \"New Title\" }).",
+      "deleteTitle": "DELETE /api/sessions/:id",
+      "deleteDesc": "Permanently delete a session and all its associated message records."
     },
-    "auth": {
-      "title": "API Key Authentication & Integrations",
-      "desc": "Provide Authorization: Bearer <API_KEY> header to authenticate integration requests from n8n, Antigravity, OpenCode, or curl.",
-      "headerLabel": "Authentication Header:",
-      "headerValue": "Authorization: Bearer gem_sec_your_key_here"
+    "usage": {
+      "title": "Quota Status & Usage History (GET /api/account/usage)",
+      "desc": "Fetch live daily quota metrics, remaining requests, percentage used, and 7-day usage audit logs.",
+      "authNote": "Returns IP-based guest quota if unauthenticated, or complete account profile quota if token is provided."
+    },
+    "plan": {
+      "title": "Subscription Plan Management (POST /api/account/plan)",
+      "desc": "Upgrade or switch account plan tier instantly (Free: 20 req/day, Pro: 100 req/day, Ultra: 1,000 req/day).",
+      "planParam": "Target plan tier: 'free', 'pro', or 'ultra'."
+    },
+    "keys": {
+      "title": "API Key Management (GET & POST /api/account/keys)",
+      "desc": "Create and revoke secure API Keys for external integrations (n8n, Antigravity Agent, OpenCode, cURL, backend scripts).",
+      "createTitle": "POST /api/account/keys",
+      "createDesc": "Create a new API Key (body: { \"name\": \"Key Name\" }). Raw key is only shown once upon creation.",
+      "listTitle": "GET /api/account/keys",
+      "listDesc": "Retrieve all active API Keys with creation and last used timestamps.",
+      "revokeTitle": "DELETE /api/account/keys/:id",
+      "revokeDesc": "Revoke and destroy the API Key immediately."
+    },
+    "status": {
+      "title": "Browser Tab Pool Worker Status (GET /api/status)",
+      "desc": "Check real-time health of Playwright persistent context: busy worker tabs, idle warm tabs, and task queue length."
     },
     "responses": {
-      "title": "Response Format & Error Codes",
-      "successDesc": "200 OK: Returns { ok: true, images: [{ file, url, width, height }] }",
-      "error400": "400 Bad Request: Invalid or missing prompt/image parameters or payload exceeded limits",
-      "error401": "401 Unauthorized: Missing or revoked API Key",
-      "error403": "403 Quota Exceeded: Daily request quota limit reached for your account",
-      "error500": "500 Internal Error: Server or browser automation failure"
+      "title": "Status Codes & Error Response Schemas",
+      "successDesc": "Request successfully processed. Returns output image URLs, dimensions, and updated quota info.",
+      "error400": "400 Bad Request: Malformed JSON, empty prompt, image size over 50MB, or invalid parameters.",
+      "error401": "401 Unauthorized: Missing, invalid, or revoked API Key.",
+      "error403": "403 Forbidden: Daily request quota exhausted or feature restricted on current plan tier.",
+      "error404": "404 Not Found: Requested session or API Key not found in database.",
+      "error500": "500 Internal Error: Browser automation or network timeout (automatic quota rollback guaranteed)."
     }
   },
   "account": {

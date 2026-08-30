@@ -121,65 +121,97 @@
     }
   },
   "docs": {
-    "title": "Dokumentasi API",
-    "subtitle": "Spesifikasi Endpoint Text-to-Image, Image-to-Image & Manajemen Sesi",
-    "requestBody": "Request Body (JSON)",
+    "title": "Dokumentasi API & Integrasi",
+    "subtitle": "Spesifikasi Lengkap REST API, Parameter Request, Format Response, dan Panduan SDK",
+    "requestBody": "Parameter Request (JSON Body)",
+    "requestHeaders": "Request Headers",
+    "responseSuccess": "Format Response Berhasil (200 OK)",
+    "responseErrors": "Format Respon Kesalahan & Error Codes",
     "copy": "Salin",
     "copied": "Tersalin",
+    "downloadSpec": "Unduh OpenAPI JSON",
     "curlSnippet": "Contoh cURL",
     "pythonSnippet": "Contoh Python (requests)",
     "nodeSnippet": "Contoh JavaScript / Node.js (fetch)",
+    "n8nSnippet": "Contoh Integrasi n8n / Antigravity",
     "tabs": {
       "generate": "POST /api/generate",
       "edit": "POST /api/edit",
       "sessions": "CRUD /api/sessions",
-      "auth": "Autentikasi API",
+      "usage": "GET /api/account/usage",
+      "plan": "POST /api/account/plan",
+      "keys": "API Keys",
+      "status": "GET /api/status",
+      "openapi": "OpenAPI 3.0",
       "curl": "cURL",
-      "python": "Python",
+      "python": "Python (requests)",
       "javascript": "JavaScript / Node.js"
     },
     "generate": {
-      "title": "Text-to-Image Generation",
-      "desc": "Menghasilkan gambar berkualitas tinggi dari deskripsi teks secara otomatis melalui Google Gemini Imagen 3.",
-      "promptParam": "prompt (string, wajib) : Deskripsi detail gambar yang ingin dihasilkan (maks 2.000 karakter)",
-      "sessionParam": "session_id (string, opsional) : ID sesi percakapan untuk mengelompokkan riwayat",
-      "aspectRatioParam": "aspect_ratio (string, opsional) : Rasio aspek target (Auto, 1:1, 16:9, 9:16, 4:3, 3:4, 2:1, 1:2)",
-      "modelParam": "model (string, opsional) : Model AI Gemini (3.7-flash, 3.5-flash-lite, 3.1-pro, extended-thinking)"
+      "title": "Text-to-Image Generation (POST /api/generate)",
+      "desc": "Menghasilkan gambar beresolusi tinggi dari deskripsi teks (prompt) menggunakan Google Gemini Imagen 3 engine.",
+      "authNote": "Otentikasi opsional untuk pengguna tamu (Free - 20 req/hari), wajib menyertakan Authorization Bearer untuk API Key akun Anda.",
+      "promptParam": "Deskripsi visual gambar yang ingin dibuat (maksimal 2.000 karakter, teks alami atau keyword detail).",
+      "sessionParam": "ID sesi percakapan (contoh: sess_...) untuk mengelompokkan ke riwayat chat.",
+      "aspectRatioParam": "Rasio aspek gambar target: '1:1' (Kotak), '16:9' (Landscape), '9:16' (Potret/Story), '4:3', '3:4', '2:1', '1:2', atau 'Auto'.",
+      "modelParam": "Model AI Gemini yang digunakan: '3.7-flash' (2x kuota), '3.5-flash-lite' (1x kuota), '3.1-pro' (3x kuota), 'extended-thinking' (4x kuota)."
     },
     "edit": {
-      "title": "Image-to-Image Editing",
-      "desc": "Memodifikasi dan mengedit bagian tertentu dari gambar input berdasarkan instruksi prompt alami.",
-      "promptParam": "prompt (string, wajib) : Instruksi perbaikan, perubahan gaya, atau pengeditan area",
-      "imageParam": "image (string, wajib) : Gambar masukan dalam format Base64 Data URL atau URL gambar",
-      "sessionParam": "session_id (string, opsional) : ID sesi percakapan terkait",
-      "aspectRatioParam": "aspect_ratio (string, opsional) : Rasio aspek target hasil edit gambar",
-      "modelParam": "model (string, opsional) : Model AI Gemini yang digunakan"
+      "title": "Image-to-Image Editing (POST /api/edit)",
+      "desc": "Memodifikasi, mengubah gaya, atau mengganti elemen dari gambar yang dilampirkan berdasarkan instruksi prompt.",
+      "authNote": "Fitur Image Editing tersedia untuk akun yang mendukung (seperti Pro & Ultra Plan).",
+      "promptParam": "Instruksi teks tentang perubahan apa yang harus dilakukan terhadap gambar input.",
+      "imageParam": "Data gambar input dalam format Data URL Base64 ('data:image/png;base64,...') atau URL gambar hosted.",
+      "sessionParam": "ID sesi percakapan untuk menyimpan perubahan ke dalam alur riwayat yang sama.",
+      "aspectRatioParam": "Rasio aspek baru hasil edit jika ingin mengubah format ukuran.",
+      "modelParam": "Model AI Gemini yang digunakan dalam pemrosesan edit."
     },
     "sessions": {
-      "title": "CRUD Sesi & Riwayat Percakapan",
-      "desc": "Semua sesi percakapan dan pesan tersimpan otomatis di database SQLite lokal.",
-      "listTitle": "Daftar Sesi",
-      "listDesc": "GET /api/sessions : Ambil seluruh riwayat sesi percakapan pengguna.",
-      "createTitle": "Buat Sesi Baru",
-      "createDesc": "POST /api/sessions : Buat sesi baru dengan tipe 'generate' atau 'edit'.",
-      "detailTitle": "Detail & Pesan Sesi",
-      "detailDesc": "GET /api/sessions/:id : Ambil detail sesi dan seluruh pesan di dalamnya.",
-      "deleteTitle": "Hapus Sesi",
-      "deleteDesc": "DELETE /api/sessions/:id : Hapus sesi beserta seluruh data pesannya."
+      "title": "Manajemen Sesi Percakapan (CRUD /api/sessions)",
+      "desc": "Mengelola riwayat percakapan, pesan, dan galeri gambar pengguna dengan isolasi data terenkripsi di MongoDB.",
+      "listTitle": "GET /api/sessions",
+      "listDesc": "Mengambil seluruh daftar sesi percakapan aktif milik pengguna.",
+      "createTitle": "POST /api/sessions",
+      "createDesc": "Membuat sesi baru dengan tipe 'generate' (Text-to-Image) atau 'edit' (Image-to-Image).",
+      "detailTitle": "GET /api/sessions/:id",
+      "detailDesc": "Mengambil detail satu sesi beserta seluruh riwayat pesan & tautan gambar di dalamnya.",
+      "updateTitle": "PUT /api/sessions/:id",
+      "updateDesc": "Memperbarui judul sesi (body: { \"title\": \"Judul Baru\" }).",
+      "deleteTitle": "DELETE /api/sessions/:id",
+      "deleteDesc": "Menghapus sesi beserta seluruh data pesan & riwayat generasinya secara permanen."
     },
-    "auth": {
-      "title": "Autentikasi & Integrasi API Key",
-      "desc": "Gunakan header Authorization: Bearer <API_KEY> untuk mengautentikasi request integrasi dari n8n, Antigravity, OpenCode, atau curl.",
-      "headerLabel": "Header Autentikasi:",
-      "headerValue": "Authorization: Bearer gem_sec_kunci_anda"
+    "usage": {
+      "title": "Status Kuota & Histori Penggunaan (GET /api/account/usage)",
+      "desc": "Mengambil metrik kuota live hari ini, sisa request, persentase pemakaian, dan riwayat request 7 hari terakhir.",
+      "authNote": "Mengembalikan data kuota tamu berdasar IP jika tanpa token, atau kuota user lengkap jika menyertakan Session Cookie / API Key."
+    },
+    "plan": {
+      "title": "Pengaturan Paket Langganan (POST /api/account/plan)",
+      "desc": "Mengubah atau meng-upgrade paket langganan akun secara instan (Free: 20 req/hari, Pro: 100 req/hari, Ultra: 1.000 req/hari).",
+      "planParam": "Tipe paket target: 'free', 'pro', atau 'ultra'."
+    },
+    "keys": {
+      "title": "Manajemen API Key (GET & POST /api/account/keys)",
+      "desc": "Membuat dan mencabut API Key untuk integrasi eksternal seperti n8n, Antigravity Agent, OpenCode, atau script otomatisasi backend.",
+      "createTitle": "POST /api/account/keys",
+      "createDesc": "Membuat API Key baru (body: { \"name\": \"Nama Key\" }). Raw key hanya ditampilkan sekali saat dibuat.",
+      "listTitle": "GET /api/account/keys",
+      "listDesc": "Mengambil daftar seluruh API Key aktif beserta tanggal pembuatan dan terakhir digunakan.",
+      "revokeTitle": "DELETE /api/account/keys/:id",
+      "revokeDesc": "Mencabut dan menghapus API Key secara instan."
+    },
+    "status": {
+      "title": "Status Worker Browser Pool (GET /api/status)",
+      "desc": "Memeriksa status operasional automasi Playwright Chrome: jumlah tab aktif (busyTabs), tab siap pakai (idleTabs), dan antrean task."
     },
     "responses": {
-      "title": "Format Respon & Error Codes",
-      "successDesc": "200 OK: Mengembalikan properti { ok: true, images: [{ file, url, width, height }] }",
-      "error400": "400 Bad Request: Parameter prompt/gambar tidak valid atau melebihi batas ukuran",
-      "error401": "401 Unauthorized: API Key tidak disertakan atau sudah dicabut",
-      "error403": "403 Quota Exceeded: Kuota request harian akun Anda telah habis",
-      "error500": "500 Internal Error: Terjadi kegagalan automasi browser atau timeout"
+      "title": "Daftar Kode Status & Respon Error",
+      "successDesc": "Request berhasil diproses. Mengembalikan URL gambar output dan status sisa kuota terbaru.",
+      "error400": "400 Bad Request: Format JSON tidak valid, prompt kosong, gambar melebihi batas 50MB, atau parameter tidak sesuai.",
+      "error401": "401 Unauthorized: API Key tidak disertakan, tidak valid, atau telah dicabut dari akun.",
+      "error403": "403 Forbidden: Kuota harian Anda telah habis atau paket akun tidak mengizinkan aksi yang diminta.",
+      "error404": "404 Not Found: Sesi atau API Key yang dicari tidak ditemukan di database.",
+      "error500": "500 Internal Error: Terjadi kendala automasi browser atau timeout antrean task (otomatis rollback kuota)."
     }
   },
   "account": {
