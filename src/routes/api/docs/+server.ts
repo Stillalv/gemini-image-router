@@ -1,6 +1,69 @@
-﻿import { json, type RequestHandler } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async () => {
+  const paths = {
+    '/api/generate': {
+      post: {
+        summary: 'Generate gambar baru dari teks (Text-to-Image)',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['prompt'],
+                properties: {
+                  prompt: { type: 'string' },
+                  session_id: { type: 'string' },
+                  aspect_ratio: { type: 'string' },
+                  model: { type: 'string', enum: ['3.7-flash', '3.5-flash-lite', '3.1-pro', 'extended-thinking'] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/edit': {
+      post: {
+        summary: 'Edit gambar yang ada dengan melampirkan attachment (Image-to-Image)',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['prompt', 'image'],
+                properties: {
+                  prompt: { type: 'string' },
+                  image: { type: 'string' },
+                  session_id: { type: 'string' },
+                  aspect_ratio: { type: 'string' },
+                  model: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/sessions': {
+      get: { summary: 'Dapatkan daftar seluruh sesi percakapan' },
+      post: { summary: 'Buat sesi percakapan baru' }
+    },
+    '/api/account/usage': {
+      get: { summary: 'Dapatkan status kuota harian live' }
+    },
+    '/api/account/plan': {
+      post: { summary: 'Ganti atau upgrade paket langganan' }
+    },
+    '/api/account/keys': {
+      get: { summary: 'Daftar API Key' },
+      post: { summary: 'Buat API Key baru' }
+    },
+    '/api/status': {
+      get: { summary: 'Status live worker browser pool' }
+    }
+  };
+
   return json({
     openapi: '3.0.0',
     info: {
@@ -8,6 +71,7 @@ export const GET: RequestHandler = async () => {
       version: '2.1.0',
       description: 'API router cerdas untuk Text-to-Image dan Image-to-Image dengan manajemen Quota, Plan Tiering & MongoDB Persistence'
     },
+    paths,
     endpoints: [
       {
         path: '/api/generate',
@@ -18,7 +82,8 @@ export const GET: RequestHandler = async () => {
         },
         parameters: {
           prompt: { type: 'string', required: true, description: 'Deskripsi gambar yang diinginkan' },
-          session_id: { type: 'string', required: false, description: 'ID sesi untuk menyimpan ke riwayat' }
+          session_id: { type: 'string', required: false, description: 'ID sesi untuk menyimpan ke riwayat' },
+          model: { type: 'string (3.7-flash | 3.5-flash-lite | 3.1-pro | extended-thinking)', required: false }
         },
         exampleRequest: {
           prompt: 'kucing astronot mengendarai vespa, style 3d pixar',
@@ -35,7 +100,8 @@ export const GET: RequestHandler = async () => {
         parameters: {
           prompt: { type: 'string', required: true, description: 'Instruksi perubahan pada gambar' },
           image: { type: 'string (base64 | url | /output/...)', required: true, description: 'Data gambar attachment yang ingin diedit' },
-          session_id: { type: 'string', required: false, description: 'ID sesi' }
+          session_id: { type: 'string', required: false, description: 'ID sesi' },
+          model: { type: 'string', required: false }
         },
         exampleRequest: {
           prompt: 'Ganti helm astronot menjadi topi koboi cokelat',

@@ -1,4 +1,4 @@
-﻿import { json, type RequestHandler } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import { authenticateRequest } from '$lib/server/security/quota-guard';
 import { usageRepo } from '$lib/server/db/repository';
 
@@ -30,6 +30,6 @@ export const GET: RequestHandler = async ({ request }) => {
       quota
     });
   } catch (err: any) {
-    return json({ ok: false, error: err.message }, { status: 500 });
+    return json({ ok: false, error: err.message }, { status: 401 });
   }
 };

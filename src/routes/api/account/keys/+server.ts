@@ -1,4 +1,4 @@
-﻿import { json, type RequestHandler } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import { authenticateRequest } from '$lib/server/security/quota-guard';
 import { userRepo } from '$lib/server/db/repository';
 
@@ -36,6 +36,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     return json({
       ok: true,
+      rawKey,
       apiKey: {
         id: keyItem.id,
         name: keyItem.name,
