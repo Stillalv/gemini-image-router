@@ -97,34 +97,39 @@ export async function runEditTask(
 
     const existingImages = await page.evaluate(() => [...document.querySelectorAll('img')].map((i) => i.src)).catch(() => []);
 
-    // 3. Upload files directly to file input
-    const fileInput = page.locator('input[type="file"]').first();
-    let uploadSuccess = false;
+    // 3. Upload files via verified FileChooser
+    console.log(`[EDIT:${taskId}] Opening upload menu for ${tempFilePaths.length} attachment(s)...`);
+    const uploadBtn = page.locator('button[aria-label*="Upload" i], button[aria-label*="Tambahkan" i], button[aria-label*="Tools" i]').first();
+    await uploadBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await uploadBtn.click();
+    await page.waitForTimeout(600);
 
-    if (await fileInput.count()) {
-      try {
-        await fileInput.setInputFiles(tempFilePaths);
-        uploadSuccess = true;
-      } catch (err: any) {
-        console.warn(`[EDIT:${taskId}] Direct fileInput set failed, trying upload menu...`, err.message);
+    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
+    const uploadMenuItem = page.locator('[role="menuitem"]:has-text("Upload"), [role="menuitem"]:has-text("Unggah"), .mat-mdc-menu-item:has-text("Upload"), .mat-mdc-menu-item:has-text("Unggah")').first();
+
+    if (await uploadMenuItem.count()) {
+      await uploadMenuItem.click();
+    }
+
+    const fileChooser = await fileChooserPromise;
+    if (fileChooser) {
+      console.log(`[EDIT:${taskId}] Setting ${tempFilePaths.length} file(s) on FileChooser...`);
+      await fileChooser.setFiles(tempFilePaths);
+    } else {
+      const mountedInput = page.locator('input[type="file"]').first();
+      if (await mountedInput.count()) {
+        await mountedInput.setInputFiles(tempFilePaths);
       }
     }
 
-    if (!uploadSuccess) {
-      const uploadBtn = page.locator('button[aria-label*="Upload &" i], button[aria-label*="Upload and" i], button[aria-label*="Tambahkan" i], .gem-menu-button button, .menu-button button').first();
-      if (await uploadBtn.count() && (await uploadBtn.isVisible().catch(() => false))) {
-        await uploadBtn.click();
-        await page.waitForTimeout(600);
-        const fallbackFileInput = page.locator('input[type="file"]').first();
-        if (await fallbackFileInput.count()) {
-          await fallbackFileInput.setInputFiles(tempFilePaths);
-        }
-      }
-    }
+    // 4. Wait for attachment thumbnail chip to render in input area
+    const thumbnail = page.locator('.input-area img, rich-textarea img, form img, [class*="thumbnail"] img, [aria-label*="remove image" i], [aria-label*="hapus gambar" i]').first();
+    await thumbnail.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+      console.log(`[EDIT:${taskId}] Thumbnail wait finished.`);
+    });
+    await page.waitForTimeout(1200);
 
-    await page.waitForTimeout(2500 + tempFilePaths.length * 600);
-
-    // 4. Dismiss any open menu or Material backdrop overlays
+    // 5. Dismiss any open menu or Material backdrop overlays
     await page.keyboard.press('Escape').catch(() => {});
     await page.waitForTimeout(300);
 
